@@ -108,6 +108,36 @@ class TtsManager(
         }
     }
 
+    /**
+     * POST [sampleText] to `{baseUrl}/tts`, play audio on success. [onResult] on main thread.
+     */
+    fun testNetworkTts(
+        networkBaseUrl: String,
+        networkApiKey: String,
+        sampleText: String,
+        onResult: (success: Boolean, detail: String) -> Unit,
+    ) {
+        Thread {
+            try {
+                val ok = tryNetworkTts(sampleText, networkBaseUrl, networkApiKey)
+                mainHandler.post {
+                    onResult(
+                        ok,
+                        if (ok) {
+                            "ok"
+                        } else {
+                            "play_or_http_failed"
+                        },
+                    )
+                }
+            } catch (e: Exception) {
+                mainHandler.post {
+                    onResult(false, e.message ?: e.javaClass.simpleName)
+                }
+            }
+        }.start()
+    }
+
     fun stopPlayback() {
         runCatching {
             mediaPlayer.stop()

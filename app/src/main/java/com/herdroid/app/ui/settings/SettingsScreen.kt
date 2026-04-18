@@ -15,9 +15,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -26,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -66,8 +70,18 @@ fun SettingsScreen(
         apiKey = prefs.networkTtsApiKey
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val userMessage by viewModel.userMessage.collectAsStateWithLifecycle()
+
+    LaunchedEffect(userMessage) {
+        val m = userMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(m)
+        viewModel.clearUserMessage()
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_title)) },
@@ -123,6 +137,14 @@ fun SettingsScreen(
                     }
                 },
             )
+            OutlinedButton(
+                onClick = {
+                    viewModel.testHaConnection(scheme, host, portText)
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.test_connection))
+            }
             Text(stringResource(R.string.tts_engine_label), style = MaterialTheme.typography.labelLarge)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -157,6 +179,14 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
+            OutlinedButton(
+                onClick = {
+                    viewModel.testNetworkTts(networkBase, apiKey)
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.test_network_tts))
+            }
             Button(
                 onClick = {
                     val port = portText.toIntOrNull()

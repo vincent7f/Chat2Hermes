@@ -26,4 +26,17 @@
     <string name="hint_host">192.168.1.10</string>
     <string name="hint_port">8080</string>
     <string name="port_invalid">端口须为 1–65535</string>
+    <string name="test_connection">测试访问协议（WebSocket）</string>
+    <string name="test_network_tts">测试局域网网络 TTS</string>
+    <string name="network_tts_test_phrase">这是一条网络语音测试。</string>
+    <string name="test_feedback_port_invalid">端口无效，无法测试</string>
+    <string name="test_feedback_host_empty">请填写地址</string>
+    <string name="test_feedback_connecting">正在测试 WebSocket 连接…</string>
+    <string name="test_feedback_ws_ok">WebSocket 连接成功</string>
+    <string name="test_feedback_ws_fail">连接失败：%1$s</string>
+    <string name="test_feedback_tts_url_empty">请填写网络 TTS 基础 URL</string>
+    <string name="test_feedback_tts_testing">正在请求网络 TTS…</string>
+    <string name="test_feedback_tts_ok">网络 TTS 测试成功（已尝试播放）</string>
+    <string name="test_feedback_tts_fail_generic">网络 TTS 失败：HTTP 非成功或无法播放音频</string>
+    <string name="test_feedback_tts_fail_detail">网络 TTS 失败：%1$s</string>
 </resources>
