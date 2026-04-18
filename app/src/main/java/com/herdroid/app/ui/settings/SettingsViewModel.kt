@@ -11,6 +11,7 @@ import com.herdroid.app.data.settings.SettingsRepository
 import com.herdroid.app.data.settings.TtsEngineType
 import com.herdroid.app.domain.HaConnectionTester
 import com.herdroid.app.domain.HaEndpointScanner
+import com.herdroid.app.domain.HealthCheckUrlFactory
 import com.herdroid.app.domain.WebSocketUrlFactory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -179,22 +180,23 @@ class SettingsViewModel(
                 _userMessage.value = appCtx.getString(R.string.test_feedback_port_invalid)
                 return@launch
             }
-            val url = WebSocketUrlFactory.build(scheme, host, port)
-            if (url == null) {
+            val healthUrl = HealthCheckUrlFactory.build(scheme, host, port)
+            if (healthUrl == null) {
                 _userMessage.value = appCtx.getString(R.string.test_feedback_host_empty)
                 return@launch
             }
             _userMessage.value = appCtx.getString(R.string.test_feedback_connecting)
             val result = withContext(Dispatchers.IO) {
-                HaConnectionTester.testWebSocket(app.okHttpClient, url)
+                HaConnectionTester.testHttpGet(app.okHttpClient, healthUrl)
             }
             _userMessage.value = result.fold(
                 onSuccess = {
-                    appCtx.getString(R.string.test_feedback_ws_ok)
+                    appCtx.getString(R.string.test_feedback_health_ok, healthUrl)
                 },
                 onFailure = { t ->
                     appCtx.getString(
-                        R.string.test_feedback_ws_fail,
+                        R.string.test_feedback_health_fail,
+                        healthUrl,
                         t.message ?: t.javaClass.simpleName,
                     )
                 },

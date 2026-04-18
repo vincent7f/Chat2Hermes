@@ -43,4 +43,21 @@ object HaConnectionTester {
             Result.failure(e)
         }
     }
+
+    /**
+     * HTTP GET（如 `{base}/health`），响应码 2xx 视为成功。
+     */
+    fun testHttpGet(client: OkHttpClient, url: String): Result<Unit> {
+        return try {
+            client.newCall(Request.Builder().url(url).get().build()).execute().use { resp ->
+                if (resp.isSuccessful) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(RuntimeException("HTTP ${resp.code}"))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
