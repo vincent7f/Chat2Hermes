@@ -1,0 +1,14 @@
+---
+description: 在本仓库修改代码或资源后自动执行 debug APK 完整构建
+alwaysApply: true
+---
+
+# 修改后构建 APK（Herdroid）
+
+- 凡在本项目中**修改、新增或删除**涉及 Android 应用的文件（如 `app/src/**`、`app/build.gradle.kts`、Gradle 配置等），在结束本轮助手回复**之前**，应执行一次 **完整 debug 构建**以生成 APK，而不仅限于 `compileDebugKotlin`。
+- Windows 下在项目根目录执行：
+
+  `.\gradlew.bat assembleDebug --no-daemon`
+
+- 构建成功后，debug APK 位于 `app/build/outputs/apk/debug/`；若配置了 `archiveHerdroidDebugApk` 等任务，以 Gradle 日志中的复制路径为准。
+- 若构建失败，应修复问题或如实说明失败原因，**不要**在未验证构建的情况下声称「已完成」。
