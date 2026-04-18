@@ -1,0 +1,184 @@
+package com.herdroid.app.ui.settings
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.herdroid.app.R
+import com.herdroid.app.data.settings.SettingsRepository
+import com.herdroid.app.data.settings.TtsEngineType
+import com.herdroid.app.data.settings.UserPreferences
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(
+    repository: SettingsRepository,
+    viewModel: SettingsViewModel,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val prefs by repository.preferencesFlow.collectAsStateWithLifecycle(
+        initialValue = UserPreferences.DEFAULT,
+    )
+    val portInvalidText = stringResource(R.string.port_invalid)
+
+    var scheme by remember { mutableStateOf(prefs.scheme) }
+    var host by remember { mutableStateOf(prefs.host) }
+    var portText by remember { mutableStateOf(prefs.port.toString()) }
+    var ttsEngine by remember { mutableStateOf(prefs.ttsEngine) }
+    var networkBase by remember { mutableStateOf(prefs.networkTtsBaseUrl) }
+    var apiKey by remember { mutableStateOf(prefs.networkTtsApiKey) }
+    var portError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(prefs) {
+        scheme = prefs.scheme
+        host = prefs.host
+        portText = prefs.port.toString()
+        ttsEngine = prefs.ttsEngine
+        networkBase = prefs.networkTtsBaseUrl
+        apiKey = prefs.networkTtsApiKey
+    }
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.settings_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back),
+                        )
+                    }
+                },
+            )
+        },
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(16.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            OutlinedTextField(
+                value = scheme,
+                onValueChange = { scheme = it },
+                label = { Text(stringResource(R.string.scheme_label)) },
+                placeholder = { Text(stringResource(R.string.hint_scheme)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = host,
+                onValueChange = { host = it },
+                label = { Text(stringResource(R.string.host_label)) },
+                placeholder = { Text(stringResource(R.string.hint_host)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = portText,
+                onValueChange = {
+                    portText = it
+                    portError = null
+                },
+                label = { Text(stringResource(R.string.port_label)) },
+                placeholder = { Text(stringResource(R.string.hint_port)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                isError = portError != null,
+                supportingText = {
+                    if (portError != null) {
+                        Text(portError!!, color = MaterialTheme.colorScheme.error)
+                    }
+                },
+            )
+            Text(stringResource(R.string.tts_engine_label), style = MaterialTheme.typography.labelLarge)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(
+                    selected = ttsEngine == TtsEngineType.SYSTEM,
+                    onClick = { ttsEngine = TtsEngineType.SYSTEM },
+                )
+                Text(stringResource(R.string.tts_system))
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(
+                    selected = ttsEngine == TtsEngineType.NETWORK,
+                    onClick = { ttsEngine = TtsEngineType.NETWORK },
+                )
+                Text(stringResource(R.string.tts_network))
+            }
+            OutlinedTextField(
+                value = networkBase,
+                onValueChange = { networkBase = it },
+                label = { Text(stringResource(R.string.network_tts_base)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = false,
+                minLines = 2,
+            )
+            OutlinedTextField(
+                value = apiKey,
+                onValueChange = { apiKey = it },
+                label = { Text(stringResource(R.string.network_tts_api_key)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+            Button(
+                onClick = {
+                    val port = portText.toIntOrNull()
+                    if (port == null || port < 1 || port > 65535) {
+                        portError = portInvalidText
+                        return@Button
+                    }
+                    viewModel.save(
+                        scheme = scheme,
+                        host = host,
+                        port = port,
+                        autoPlayTts = prefs.autoPlayTts,
+                        ttsEngine = ttsEngine,
+                        networkTtsBaseUrl = networkBase,
+                        networkTtsApiKey = apiKey,
+                    )
+                    onBack()
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.save))
+            }
+        }
+    }
+}

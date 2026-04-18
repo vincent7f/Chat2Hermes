@@ -22,6 +22,8 @@
 ./gradlew lint test assembleDebug
 ```
 
+Debug 包输出：`app/build/outputs/apk/debug/app-debug.apk`（需已配置 `local.properties` 中的 `sdk.dir`）。
+
 - **lint**：静态检查与 Android 专项规则。
 - **test**：单元测试。
 - **assembleDebug**：确保可编译。

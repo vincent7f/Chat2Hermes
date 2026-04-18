@@ -23,11 +23,13 @@
 
 ## 构建与验证
 
-本仓库当前以**文档与设计**为主；待 Android Gradle 工程加入后，将在此处补充标准命令，例如：
+在项目根目录配置 `local.properties`（`sdk.dir` 指向本机 Android SDK），然后：
 
-```bash
-./gradlew lint test assembleDebug
+```powershell
+.\gradlew.bat lint assembleDebug
 ```
+
+Debug APK 输出路径：`app/build/outputs/apk/debug/app-debug.apk`。
 
 详见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 
