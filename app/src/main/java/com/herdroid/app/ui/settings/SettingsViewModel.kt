@@ -1,6 +1,9 @@
 package com.herdroid.app.ui.settings
 
 import android.app.Application
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -28,6 +31,14 @@ class SettingsViewModel(
     val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
 
     private val appCtx: Application get() = getApplication()
+
+    /** 无活动网络时（如飞行模式）提前提示；纯局域网服务在已连 Wi‑Fi 时通常仍有 INTERNET 能力位。 */
+    private fun hasActiveNetwork(): Boolean {
+        val cm = appCtx.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return true
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
 
     fun clearUserMessage() {
         _userMessage.value = null
@@ -67,6 +78,10 @@ class SettingsViewModel(
             val healthUrl = HealthCheckUrlFactory.build(scheme, host, port)
             if (healthUrl == null) {
                 _userMessage.value = appCtx.getString(R.string.test_feedback_host_empty)
+                return@launch
+            }
+            if (!hasActiveNetwork()) {
+                _userMessage.value = appCtx.getString(R.string.test_feedback_network_unavailable)
                 return@launch
             }
             _userMessage.value = appCtx.getString(R.string.test_feedback_connecting)

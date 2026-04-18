@@ -46,6 +46,7 @@
     <string name="test_feedback_port_invalid">端口无效，无法测试</string>
     <string name="test_feedback_host_empty">请填写地址</string>
     <string name="test_feedback_connecting">正在测试连接…</string>
+    <string name="test_feedback_network_unavailable">当前无可用网络。请连接与 Hermes 相同的 Wi‑Fi（或关闭飞行模式）。说明：访问互联网/局域网一般不需要在系统设置里单独授予「网络权限」——INTERNET 权限在安装应用时已生效。</string>
     <string name="test_feedback_health_ok">连接成功：%1$s</string>
     <string name="test_feedback_health_fail">连接失败（%1$s）：%2$s</string>
     <string name="test_feedback_tts_url_empty">请填写网络 TTS 基础 URL</string>
