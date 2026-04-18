@@ -2,18 +2,14 @@ package com.herdroid.app.ui.settings
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -22,7 +18,6 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,7 +34,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,7 +41,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -103,10 +96,6 @@ fun SettingsScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val userMessage by viewModel.userMessage.collectAsStateWithLifecycle()
-    // Use collectAsState (not lifecycle-aware) so NavHost destinations always see Scanning/AskingUser
-    // updates immediately; collectAsStateWithLifecycle can miss emissions tied to back stack lifecycle.
-    val autoDetectUi by viewModel.autoDetectUi.collectAsState()
-    val pendingAutoFill by viewModel.pendingAutoFill.collectAsStateWithLifecycle()
 
     LaunchedEffect(userMessage) {
         val m = userMessage ?: return@LaunchedEffect
@@ -114,19 +103,10 @@ fun SettingsScreen(
         viewModel.clearUserMessage()
     }
 
-    LaunchedEffect(pendingAutoFill) {
-        val fill = pendingAutoFill ?: return@LaunchedEffect
-        scheme = normalizeScheme(fill.scheme)
-        portText = fill.port.toString()
-        portError = null
-        viewModel.consumePendingAutoFill()
-    }
-
-    Box(modifier = modifier.fillMaxSize()) {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            topBar = {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
@@ -148,8 +128,6 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Use Surface(onClick) instead of overlay on OutlinedTextField: in verticalScroll + unbounded
-            // height, overlay match was wrong and the clickable layer could get 0 height.
             Surface(
                 onClick = { schemePickerVisible = true },
                 modifier = Modifier.fillMaxWidth(),
@@ -254,6 +232,14 @@ fun SettingsScreen(
                     }
                 },
             )
+            OutlinedButton(
+                onClick = {
+                    viewModel.testHaConnection(scheme, host, portText, apiKey)
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.test_connection))
+            }
             OutlinedTextField(
                 value = apiKey,
                 onValueChange = { apiKey = it },
@@ -268,26 +254,14 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
-            OutlinedButton(
-                onClick = { viewModel.autoDetect(host, apiKey) },
-                enabled = autoDetectUi is AutoDetectUiState.Idle && host.isNotBlank(),
+            OutlinedTextField(
+                value = networkModel,
+                onValueChange = { networkModel = it },
+                label = { Text(stringResource(R.string.network_tts_model)) },
+                placeholder = { Text(stringResource(R.string.hint_network_tts_model)) },
                 modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.auto_detect))
-            }
-            Text(
-                text = stringResource(R.string.auto_detect_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                singleLine = true,
             )
-            OutlinedButton(
-                onClick = {
-                    viewModel.testHaConnection(scheme, host, portText, apiKey)
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.test_connection))
-            }
             Text(stringResource(R.string.tts_engine_label), style = MaterialTheme.typography.labelLarge)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -314,14 +288,6 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = false,
                 minLines = 2,
-            )
-            OutlinedTextField(
-                value = networkModel,
-                onValueChange = { networkModel = it },
-                label = { Text(stringResource(R.string.network_tts_model)) },
-                placeholder = { Text(stringResource(R.string.hint_network_tts_model)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
             )
             OutlinedButton(
                 onClick = {
@@ -354,97 +320,6 @@ fun SettingsScreen(
             ) {
                 Text(stringResource(R.string.save))
             }
-        }
-        }
-
-        when (val ui = autoDetectUi) {
-            is AutoDetectUiState.Scanning -> {
-                Dialog(onDismissRequest = { viewModel.cancelAutoDetect() }) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        tonalElevation = 3.dp,
-                        shadowElevation = 6.dp,
-                    ) {
-                        Column(Modifier.padding(24.dp)) {
-                            Text(
-                                text = stringResource(R.string.auto_detect_progress_title),
-                                style = MaterialTheme.typography.titleLarge,
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            val denom = ui.total.coerceAtLeast(1)
-                            val fraction =
-                                (ui.currentIndex.toFloat() / denom.toFloat()).coerceIn(0f, 1f)
-                            LinearProgressIndicator(
-                                progress = { fraction },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = stringResource(
-                                    R.string.auto_detect_progress_body,
-                                    ui.currentIndex,
-                                    ui.total,
-                                    ui.scheme,
-                                    ui.port,
-                                ),
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                            Spacer(modifier = Modifier.height(20.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End,
-                            ) {
-                                TextButton(onClick = { viewModel.cancelAutoDetect() }) {
-                                    Text(stringResource(R.string.auto_detect_interrupt))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            is AutoDetectUiState.AskingUser -> {
-                Dialog(onDismissRequest = { viewModel.cancelAutoDetect() }) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        tonalElevation = 3.dp,
-                        shadowElevation = 6.dp,
-                    ) {
-                        Column(Modifier.padding(24.dp)) {
-                            Text(
-                                text = stringResource(R.string.auto_detect_ask_title),
-                                style = MaterialTheme.typography.titleLarge,
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = stringResource(
-                                    R.string.auto_detect_ask_message,
-                                    ui.scheme,
-                                    ui.port,
-                                ),
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                            Spacer(modifier = Modifier.height(20.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End,
-                            ) {
-                                TextButton(onClick = { viewModel.onAutoDetectSkipFound() }) {
-                                    Text(stringResource(R.string.auto_detect_skip_continue))
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Button(onClick = { viewModel.onAutoDetectAcceptFound() }) {
-                                    Text(stringResource(R.string.auto_detect_use_confirm))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            else -> {}
         }
     }
 }
