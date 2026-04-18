@@ -232,18 +232,6 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
-            OutlinedButton(
-                onClick = { viewModel.autoDetect(host) },
-                enabled = autoDetectUi is AutoDetectUiState.Idle && host.isNotBlank(),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.auto_detect))
-            }
-            Text(
-                text = stringResource(R.string.auto_detect_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             OutlinedTextField(
                 value = portText,
                 onValueChange = {
@@ -260,6 +248,18 @@ fun SettingsScreen(
                         Text(portError!!, color = MaterialTheme.colorScheme.error)
                     }
                 },
+            )
+            OutlinedButton(
+                onClick = { viewModel.autoDetect(host) },
+                enabled = autoDetectUi is AutoDetectUiState.Idle && host.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.auto_detect))
+            }
+            Text(
+                text = stringResource(R.string.auto_detect_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             OutlinedButton(
                 onClick = {
