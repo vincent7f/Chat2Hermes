@@ -81,55 +81,56 @@ class SettingsViewModel(
         }
         cancelAutoDetect()
         autoDetectJob = viewModelScope.launch {
-            val schemes = HaEndpointScanner.DEFAULT_WS_SCHEMES
-            val ports = HaEndpointScanner.DEFAULT_PORTS
-            val total = schemes.size * ports.size
-            var index = 0
+            val steps = HaEndpointScanner.scanSteps(host)
+            val total = steps.size
             try {
-                for (sch in schemes) {
-                    for (port in ports) {
-                        ensureActive()
-                        index++
-                        withContext(Dispatchers.Main.immediate) {
-                            _autoDetectUi.value = AutoDetectUiState.Scanning(
-                                currentIndex = index,
-                                total = total,
-                                scheme = sch,
-                                port = port,
-                            )
-                        }
-                        val url = WebSocketUrlFactory.build(sch, host, port) ?: continue
-                        val result = withContext(Dispatchers.IO) {
-                            HaConnectionTester.testWebSocket(
-                                app.okHttpClient,
-                                url,
-                                HaEndpointScanner.DEFAULT_TIMEOUT_MS,
-                            )
-                        }
-                        if (result.isFailure) continue
+                for ((stepIndex, step) in steps.withIndex()) {
+                    ensureActive()
+                    val index = stepIndex + 1
+                    withContext(Dispatchers.Main.immediate) {
+                        _autoDetectUi.value = AutoDetectUiState.Scanning(
+                            currentIndex = index,
+                            total = total,
+                            scheme = step.displayScheme,
+                            port = step.port,
+                        )
+                    }
+                    val result = withContext(Dispatchers.IO) {
+                        HaConnectionTester.testWebSocket(
+                            app.okHttpClient,
+                            step.probeUrl,
+                            HaEndpointScanner.DEFAULT_TIMEOUT_MS,
+                        )
+                    }
+                    if (result.isFailure) continue
 
-                        val d = CompletableDeferred<Boolean>()
-                        confirmDeferred = d
-                        withContext(Dispatchers.Main.immediate) {
-                            _autoDetectUi.value = AutoDetectUiState.AskingUser(scheme = sch, port = port)
-                        }
-                        val accepted = try {
-                            d.await()
-                        } catch (e: CancellationException) {
-                            throw e
-                        } finally {
-                            confirmDeferred = null
-                        }
-                        if (accepted) {
-                            _pendingAutoFill.value = AutoDetectFill(scheme = sch, port = port)
-                            _userMessage.value = appCtx.getString(
-                                R.string.auto_detect_applied,
-                                sch,
-                                port,
-                            )
-                            _autoDetectUi.value = AutoDetectUiState.Idle
-                            return@launch
-                        }
+                    val d = CompletableDeferred<Boolean>()
+                    confirmDeferred = d
+                    withContext(Dispatchers.Main.immediate) {
+                        _autoDetectUi.value = AutoDetectUiState.AskingUser(
+                            scheme = step.displayScheme,
+                            port = step.port,
+                        )
+                    }
+                    val accepted = try {
+                        d.await()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } finally {
+                        confirmDeferred = null
+                    }
+                    if (accepted) {
+                        _pendingAutoFill.value = AutoDetectFill(
+                            scheme = step.displayScheme,
+                            port = step.port,
+                        )
+                        _userMessage.value = appCtx.getString(
+                            R.string.auto_detect_applied,
+                            step.displayScheme,
+                            step.port,
+                        )
+                        _autoDetectUi.value = AutoDetectUiState.Idle
+                        return@launch
                     }
                 }
                 _userMessage.value = appCtx.getString(R.string.auto_detect_failed)
