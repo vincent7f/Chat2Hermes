@@ -1,3 +1,6 @@
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -55,4 +58,37 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.android)
     debugImplementation(libs.androidx.compose.ui.tooling)
+}
+
+/** Copies `app-debug.apk` to `Herdroid-debug-<yyyyMMdd-HHmmss>.apk` under debug outputs and to Baidu Sync. */
+val archiveHerdroidDebugApk =
+    tasks.register("archiveHerdroidDebugApk") {
+        group = "build"
+        description =
+            "Copy debug APK as Herdroid-debug-<timestamp>.apk to outputs/apk/debug and D:/BaiduSyncdisk/apk/Herdroid"
+        dependsOn("assembleDebug")
+        doLast {
+            val ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))
+            val fileName = "Herdroid-debug-$ts.apk"
+            val source = layout.buildDirectory.get().asFile.resolve("outputs/apk/debug/app-debug.apk")
+            check(source.exists()) {
+                "Missing debug APK: ${source.absolutePath}. Run assembleDebug first."
+            }
+            val outDir = layout.buildDirectory.get().asFile.resolve("outputs/apk/debug")
+            outDir.mkdirs()
+            val destProject = outDir.resolve(fileName)
+            source.copyTo(destProject, overwrite = true)
+            val syncRoot = rootProject.file("D:/BaiduSyncdisk/apk/Herdroid")
+            syncRoot.mkdirs()
+            val destSync = syncRoot.resolve(fileName)
+            source.copyTo(destSync, overwrite = true)
+            logger.lifecycle("Herdroid debug archive: ${destProject.absolutePath}")
+            logger.lifecycle("Herdroid sync copy:     ${destSync.absolutePath}")
+        }
+    }
+
+afterEvaluate {
+    tasks.named("assembleDebug").configure {
+        finalizedBy(archiveHerdroidDebugApk)
+    }
 }

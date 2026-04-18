@@ -29,7 +29,7 @@
 .\gradlew.bat lint assembleDebug
 ```
 
-Debug APK 输出路径：`app/build/outputs/apk/debug/app-debug.apk`。
+构建完成后会生成默认包 `app/build/outputs/apk/debug/app-debug.apk`，并自动复制为带时间戳的 **`Herdroid-debug-<yyyyMMdd-HHmmss>.apk`**（同目录一份），以及 **`D:\BaiduSyncdisk\apk\Herdroid\`** 下一份。也可单独执行 `.\gradlew.bat archiveHerdroidDebugApk`。
 
 详见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 

@@ -22,7 +22,7 @@
 ./gradlew lint test assembleDebug
 ```
 
-Debug 包输出：`app/build/outputs/apk/debug/app-debug.apk`（需已配置 `local.properties` 中的 `sdk.dir`）。
+Debug 包：`app/build/outputs/apk/debug/app-debug.apk`；构建结束后还会生成 `Herdroid-debug-<yyyyMMdd-HHmmss>.apk`（同目录），并复制到 `D:\BaiduSyncdisk\apk\Herdroid\`（需已配置 `local.properties` 中的 `sdk.dir`）。
 
 - **lint**：静态检查与 Android 专项规则。
 - **test**：单元测试。
