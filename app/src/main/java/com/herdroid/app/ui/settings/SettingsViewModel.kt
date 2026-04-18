@@ -10,6 +10,7 @@ import com.herdroid.app.R
 import com.herdroid.app.data.settings.SettingsRepository
 import com.herdroid.app.data.settings.TtsEngineType
 import com.herdroid.app.domain.HaConnectionTester
+import com.herdroid.app.domain.HaEndpointScanner
 import com.herdroid.app.domain.WebSocketUrlFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +18,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+data class AutoDetectFill(val scheme: String, val port: Int)
 
 class SettingsViewModel(
     application: Application,
@@ -27,8 +30,53 @@ class SettingsViewModel(
     private val _userMessage = MutableStateFlow<String?>(null)
     val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
 
+    private val _autoDetectRunning = MutableStateFlow(false)
+    val autoDetectRunning: StateFlow<Boolean> = _autoDetectRunning.asStateFlow()
+
+    private val _pendingAutoFill = MutableStateFlow<AutoDetectFill?>(null)
+    val pendingAutoFill: StateFlow<AutoDetectFill?> = _pendingAutoFill.asStateFlow()
+
     fun clearUserMessage() {
         _userMessage.value = null
+    }
+
+    fun consumePendingAutoFill() {
+        _pendingAutoFill.value = null
+    }
+
+    /**
+     * 根据已填主机（IP/域名）扫描 ws/wss 与 [HaEndpointScanner.DEFAULT_PORTS]，成功则写入 [pendingAutoFill] 供界面合并。
+     */
+    fun autoDetect(hostInput: String) {
+        viewModelScope.launch {
+            val host = hostInput.trim()
+            if (host.isEmpty()) {
+                _userMessage.value = getApplication<Application>().getString(R.string.auto_detect_need_host)
+                return@launch
+            }
+            _autoDetectRunning.value = true
+            try {
+                _userMessage.value = getApplication<Application>().getString(R.string.auto_detect_scanning)
+                val result = withContext(Dispatchers.IO) {
+                    HaEndpointScanner.findFirstWebSocket(app.okHttpClient, host)
+                }
+                result.fold(
+                    onSuccess = { (sch, port) ->
+                        _pendingAutoFill.value = AutoDetectFill(scheme = sch, port = port)
+                        _userMessage.value = getApplication<Application>().getString(
+                            R.string.auto_detect_success,
+                            sch,
+                            port,
+                        )
+                    },
+                    onFailure = {
+                        _userMessage.value = getApplication<Application>().getString(R.string.auto_detect_failed)
+                    },
+                )
+            } finally {
+                _autoDetectRunning.value = false
+            }
+        }
     }
 
     fun save(

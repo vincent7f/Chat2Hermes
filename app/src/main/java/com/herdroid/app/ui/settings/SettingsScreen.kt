@@ -89,11 +89,21 @@ fun SettingsScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val userMessage by viewModel.userMessage.collectAsStateWithLifecycle()
+    val autoDetectRunning by viewModel.autoDetectRunning.collectAsStateWithLifecycle()
+    val pendingAutoFill by viewModel.pendingAutoFill.collectAsStateWithLifecycle()
 
     LaunchedEffect(userMessage) {
         val m = userMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(m)
         viewModel.clearUserMessage()
+    }
+
+    LaunchedEffect(pendingAutoFill) {
+        val fill = pendingAutoFill ?: return@LaunchedEffect
+        scheme = normalizeScheme(fill.scheme)
+        portText = fill.port.toString()
+        portError = null
+        viewModel.consumePendingAutoFill()
     }
 
     Scaffold(
@@ -209,6 +219,18 @@ fun SettingsScreen(
                 placeholder = { Text(stringResource(R.string.hint_host)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+            )
+            OutlinedButton(
+                onClick = { viewModel.autoDetect(host) },
+                enabled = !autoDetectRunning && host.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.auto_detect))
+            }
+            Text(
+                text = stringResource(R.string.auto_detect_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             OutlinedTextField(
                 value = portText,

@@ -27,6 +27,12 @@
     <string name="hint_host">192.168.1.10</string>
     <string name="hint_port">8080</string>
     <string name="port_invalid">端口须为 1–65535</string>
+    <string name="auto_detect">自动检测协议与端口</string>
+    <string name="auto_detect_hint">将依次尝试 ws / wss 与端口 80、8000、8080、8765 等（同一局域网）。</string>
+    <string name="auto_detect_need_host">请先填写地址（IP 或主机名）</string>
+    <string name="auto_detect_scanning">正在自动检测 WebSocket 端点…</string>
+    <string name="auto_detect_success">已检测到：%1$s，端口 %2$d</string>
+    <string name="auto_detect_failed">未检测到可用的 WebSocket 端点，请手动填写协议与端口</string>
     <string name="test_connection">测试访问协议（WebSocket）</string>
     <string name="test_network_tts">测试局域网网络 TTS</string>
     <string name="network_tts_test_phrase">这是一条网络语音测试。</string>
