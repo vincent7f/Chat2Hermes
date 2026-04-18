@@ -4,6 +4,15 @@
     <string name="main_title">Herdroid</string>
     <string name="cd_open_settings">打开设置</string>
     <string name="last_message_label">最近消息</string>
+    <string name="push_message_label">代理推送（WebSocket）</string>
+    <string name="chat_section_title">对话（/v1/chat/completions）</string>
+    <string name="chat_input_hint">输入消息…</string>
+    <string name="chat_empty">发送消息以开始对话</string>
+    <string name="chat_need_api_key">请先在设置中填写 API Key</string>
+    <string name="chat_need_base_url">请先在设置中填写网络服务基础 URL</string>
+    <string name="chat_request_failed">对话请求失败：%1$s</string>
+    <string name="cd_send_chat">发送</string>
+    <string name="chat_clear">清空对话</string>
     <string name="no_message_yet">暂无消息</string>
     <string name="auto_tts">自动语音播报</string>
     <string name="reconnect">重新连接</string>
