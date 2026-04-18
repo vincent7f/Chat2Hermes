@@ -84,12 +84,6 @@ fun MainScreen(
         viewModel.clearUserMessage()
     }
 
-    LaunchedEffect(chatMessages.size) {
-        if (chatMessages.isNotEmpty()) {
-            listState.scrollToItem(chatMessages.lastIndex)
-        }
-    }
-
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
