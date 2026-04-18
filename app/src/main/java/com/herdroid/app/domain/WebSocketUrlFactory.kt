@@ -8,7 +8,7 @@ object WebSocketUrlFactory {
         val wsScheme = when (scheme.lowercase().trim()) {
             "http", "ws" -> "ws"
             "https", "wss" -> "wss"
-            else -> scheme.lowercase().trim().ifEmpty { "ws" }
+            else -> "ws"
         }
         return if (port > 0 && port != 80 && port != 443) {
             "$wsScheme://$h:$port"

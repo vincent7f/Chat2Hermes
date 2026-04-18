@@ -56,11 +56,16 @@ import com.herdroid.app.data.settings.SettingsRepository
 import com.herdroid.app.data.settings.TtsEngineType
 import com.herdroid.app.data.settings.UserPreferences
 
-private val SCHEME_OPTIONS = listOf("ws", "wss", "http", "https")
+private val SCHEME_OPTIONS = listOf("http", "https")
 
 private fun normalizeScheme(value: String): String {
     val lower = value.lowercase().trim()
-    return if (lower in SCHEME_OPTIONS) lower else "http"
+    if (lower in SCHEME_OPTIONS) return lower
+    return when (lower) {
+        "ws" -> "http"
+        "wss" -> "https"
+        else -> "http"
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

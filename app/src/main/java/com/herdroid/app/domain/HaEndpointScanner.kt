@@ -20,11 +20,11 @@ object HaEndpointScanner {
         8642,
     )
 
-    /** 与设置页「访问协议」一致；顺序决定去重时保留的标签（优先 http/https）。 */
-    private val SCAN_SCHEME_ORDER: List<String> = listOf("http", "https", "ws", "wss")
+    /** 与设置页「访问协议」一致（仅 http / https）。 */
+    private val SCAN_SCHEME_ORDER: List<String> = listOf("http", "https")
 
     data class ScanStep(
-        /** 写入设置项时使用的协议（http/https/ws/wss）。 */
+        /** 写入设置项时使用的协议（http 或 https）。 */
         val displayScheme: String,
         val port: Int,
         /** 实际 WebSocket 探测 URL（已由 [WebSocketUrlFactory] 规范化）。 */
