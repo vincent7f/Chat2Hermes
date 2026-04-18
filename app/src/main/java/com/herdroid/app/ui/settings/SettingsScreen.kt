@@ -1,15 +1,22 @@
 package com.herdroid.app.ui.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -22,6 +29,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,16 +37,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.herdroid.app.R
 import com.herdroid.app.data.settings.SettingsRepository
 import com.herdroid.app.data.settings.TtsEngineType
 import com.herdroid.app.data.settings.UserPreferences
+
+private val SCHEME_OPTIONS = listOf("ws", "wss", "http", "https")
+
+private fun normalizeScheme(value: String): String {
+    val lower = value.lowercase().trim()
+    return if (lower in SCHEME_OPTIONS) lower else "ws"
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,7 +68,8 @@ fun SettingsScreen(
     )
     val portInvalidText = stringResource(R.string.port_invalid)
 
-    var scheme by remember { mutableStateOf(prefs.scheme) }
+    var scheme by remember { mutableStateOf(normalizeScheme(prefs.scheme)) }
+    var schemePickerVisible by remember { mutableStateOf(false) }
     var host by remember { mutableStateOf(prefs.host) }
     var portText by remember { mutableStateOf(prefs.port.toString()) }
     var ttsEngine by remember { mutableStateOf(prefs.ttsEngine) }
@@ -62,7 +78,7 @@ fun SettingsScreen(
     var portError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(prefs) {
-        scheme = prefs.scheme
+        scheme = normalizeScheme(prefs.scheme)
         host = prefs.host
         portText = prefs.port.toString()
         ttsEngine = prefs.ttsEngine
@@ -104,14 +120,68 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            OutlinedTextField(
-                value = scheme,
-                onValueChange = { scheme = it },
-                label = { Text(stringResource(R.string.scheme_label)) },
-                placeholder = { Text(stringResource(R.string.hint_scheme)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
+            Box(Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = scheme,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.scheme_label)) },
+                    trailingIcon = {
+                        Icon(
+                            Icons.Default.ArrowDropDown,
+                            contentDescription = stringResource(R.string.cd_scheme_dropdown),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .clickable { schemePickerVisible = true },
+                )
+            }
+            if (schemePickerVisible) {
+                AlertDialog(
+                    onDismissRequest = { schemePickerVisible = false },
+                    title = { Text(stringResource(R.string.scheme_label)) },
+                    text = {
+                        Column(Modifier.selectableGroup()) {
+                            SCHEME_OPTIONS.forEach { option ->
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .height(48.dp)
+                                        .selectable(
+                                            selected = option == scheme,
+                                            onClick = {
+                                                scheme = option
+                                                schemePickerVisible = false
+                                            },
+                                            role = Role.RadioButton,
+                                        )
+                                        .padding(horizontal = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    RadioButton(
+                                        selected = option == scheme,
+                                        onClick = null,
+                                    )
+                                    Text(
+                                        text = option,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        modifier = Modifier.padding(start = 8.dp),
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { schemePickerVisible = false }) {
+                            Text(stringResource(R.string.scheme_picker_close))
+                        }
+                    },
+                )
+            }
             OutlinedTextField(
                 value = host,
                 onValueChange = { host = it },

@@ -13,7 +13,7 @@
     <string name="status_error">错误：%1$s</string>
     <string name="settings_title">设置</string>
     <string name="cd_back">返回</string>
-    <string name="scheme_label">协议（ws / wss / http / https）</string>
+    <string name="scheme_label">访问协议</string>
     <string name="host_label">地址（IP 或主机名）</string>
     <string name="port_label">端口</string>
     <string name="tts_engine_label">TTS 引擎</string>
@@ -22,7 +22,8 @@
     <string name="network_tts_base">网络 TTS 基础 URL</string>
     <string name="network_tts_api_key">API Key（可选）</string>
     <string name="save">保存</string>
-    <string name="hint_scheme">ws</string>
+    <string name="cd_scheme_dropdown">选择访问协议</string>
+    <string name="scheme_picker_close">关闭</string>
     <string name="hint_host">192.168.1.10</string>
     <string name="hint_port">8080</string>
     <string name="port_invalid">端口须为 1–65535</string>
