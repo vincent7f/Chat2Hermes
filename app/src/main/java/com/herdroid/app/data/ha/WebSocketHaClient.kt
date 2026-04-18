@@ -35,10 +35,15 @@ class WebSocketHaClient : HaClient {
     )
     override val messages: Flow<String> = _messages.asSharedFlow()
 
-    override fun connect(webSocketUrl: String) {
+    override fun connect(webSocketUrl: String, bearerToken: String) {
         disconnect()
         _connectionState.value = HaConnectionState.Connecting
-        val request = Request.Builder().url(webSocketUrl).build()
+        val rb = Request.Builder().url(webSocketUrl)
+        val key = bearerToken.trim()
+        if (key.isNotEmpty()) {
+            rb.header("Authorization", "Bearer $key")
+        }
+        val request = rb.build()
         socket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 _connectionState.value = HaConnectionState.Connected

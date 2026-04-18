@@ -27,6 +27,8 @@ data class ConnectionParams(
     val scheme: String,
     val host: String,
     val port: Int,
+    /** Hermes Agent API Key（与设置中 API Key 同一项）。 */
+    val bearerToken: String,
 )
 
 class MainViewModel(
@@ -63,13 +65,20 @@ class MainViewModel(
     init {
         viewModelScope.launch {
             settingsRepository.preferencesFlow
-                .map { ConnectionParams(it.scheme, it.host, it.port) }
+                .map {
+                    ConnectionParams(
+                        scheme = it.scheme,
+                        host = it.host,
+                        port = it.port,
+                        bearerToken = it.networkTtsApiKey,
+                    )
+                }
                 .distinctUntilChanged()
                 .collectLatest { params ->
                     haClient.disconnect()
                     val url = WebSocketUrlFactory.build(params.scheme, params.host, params.port)
                     if (url != null) {
-                        haClient.connect(url)
+                        haClient.connect(url, params.bearerToken)
                     }
                 }
         }
@@ -103,7 +112,7 @@ class MainViewModel(
             haClient.disconnect()
             val url = WebSocketUrlFactory.build(p.scheme, p.host, p.port)
             if (url != null) {
-                haClient.connect(url)
+                haClient.connect(url, p.networkTtsApiKey)
             }
         }
     }

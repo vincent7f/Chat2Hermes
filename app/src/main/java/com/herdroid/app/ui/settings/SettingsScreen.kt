@@ -254,8 +254,22 @@ fun SettingsScreen(
                     }
                 },
             )
+            OutlinedTextField(
+                value = apiKey,
+                onValueChange = { apiKey = it },
+                label = { Text(stringResource(R.string.hermes_api_key)) },
+                placeholder = { Text(stringResource(R.string.hermes_api_key_hint)) },
+                supportingText = {
+                    Text(
+                        stringResource(R.string.hermes_api_key_supporting),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
             OutlinedButton(
-                onClick = { viewModel.autoDetect(host) },
+                onClick = { viewModel.autoDetect(host, apiKey) },
                 enabled = autoDetectUi is AutoDetectUiState.Idle && host.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -268,7 +282,7 @@ fun SettingsScreen(
             )
             OutlinedButton(
                 onClick = {
-                    viewModel.testHaConnection(scheme, host, portText)
+                    viewModel.testHaConnection(scheme, host, portText, apiKey)
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -300,13 +314,6 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = false,
                 minLines = 2,
-            )
-            OutlinedTextField(
-                value = apiKey,
-                onValueChange = { apiKey = it },
-                label = { Text(stringResource(R.string.network_tts_api_key)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
             )
             OutlinedTextField(
                 value = networkModel,

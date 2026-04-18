@@ -29,7 +29,6 @@
     <string name="tts_system">系统 TTS</string>
     <string name="tts_network">网络 TTS</string>
     <string name="network_tts_base">网络 TTS 基础 URL</string>
-    <string name="network_tts_api_key">API Key（OpenAI 兼容接口必填）</string>
     <string name="network_tts_model">模型名称</string>
     <string name="hint_network_tts_model">hermes-agent</string>
     <string name="save">保存</string>
@@ -37,6 +36,9 @@
     <string name="scheme_picker_close">关闭</string>
     <string name="hint_host">192.168.3.112</string>
     <string name="hint_port">8642</string>
+    <string name="hermes_api_key">API Key（Hermes Agent）</string>
+    <string name="hermes_api_key_hint">服务端启用鉴权时填写</string>
+    <string name="hermes_api_key_supporting">与对话、网络 TTS、连接与自动检测共用；请求头：Authorization: Bearer …</string>
     <string name="port_invalid">端口须为 1–65535</string>
     <string name="auto_detect">自动检测协议与端口</string>
     <string name="auto_detect_hint">将依次尝试 http / https 与各端口（同一局域网；等价 URL 只探测一次）。</string>

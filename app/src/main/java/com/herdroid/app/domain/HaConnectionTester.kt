@@ -18,11 +18,17 @@ object HaConnectionTester {
         client: OkHttpClient,
         url: String,
         timeoutMs: Long = 12_000,
+        bearerToken: String = "",
     ): Result<Unit> {
         return try {
             withTimeout(timeoutMs) {
                 suspendCancellableCoroutine { cont ->
-                    val request = Request.Builder().url(url).build()
+                    val rb = Request.Builder().url(url)
+                    val key = bearerToken.trim()
+                    if (key.isNotEmpty()) {
+                        rb.header("Authorization", "Bearer $key")
+                    }
+                    val request = rb.build()
                     val ws = client.newWebSocket(
                         request,
                         object : WebSocketListener() {
@@ -47,9 +53,14 @@ object HaConnectionTester {
     /**
      * HTTP GET（如 `{base}/health`），响应码 2xx 视为成功。
      */
-    fun testHttpGet(client: OkHttpClient, url: String): Result<Unit> {
+    fun testHttpGet(client: OkHttpClient, url: String, bearerToken: String = ""): Result<Unit> {
         return try {
-            client.newCall(Request.Builder().url(url).get().build()).execute().use { resp ->
+            val rb = Request.Builder().url(url).get()
+            val key = bearerToken.trim()
+            if (key.isNotEmpty()) {
+                rb.header("Authorization", "Bearer $key")
+            }
+            client.newCall(rb.build()).execute().use { resp ->
                 if (resp.isSuccessful) {
                     Result.success(Unit)
                 } else {

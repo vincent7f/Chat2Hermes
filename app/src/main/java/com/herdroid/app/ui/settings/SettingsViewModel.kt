@@ -74,13 +74,14 @@ class SettingsViewModel(
         confirmDeferred?.complete(false)
     }
 
-    fun autoDetect(hostInput: String) {
+    fun autoDetect(hostInput: String, apiKey: String) {
         val host = hostInput.trim()
         if (host.isEmpty()) {
             _userMessage.value = appCtx.getString(R.string.auto_detect_need_host)
             return
         }
         cancelAutoDetect()
+        val bearer = apiKey.trim()
         autoDetectJob = viewModelScope.launch {
             val steps = HaEndpointScanner.scanSteps(host)
             val total = steps.size
@@ -101,6 +102,7 @@ class SettingsViewModel(
                             app.okHttpClient,
                             step.probeUrl,
                             HaEndpointScanner.DEFAULT_TIMEOUT_MS,
+                            bearerToken = bearer,
                         )
                     }
                     if (result.isFailure) continue
@@ -173,7 +175,7 @@ class SettingsViewModel(
         }
     }
 
-    fun testHaConnection(scheme: String, host: String, portText: String) {
+    fun testHaConnection(scheme: String, host: String, portText: String, apiKey: String) {
         viewModelScope.launch {
             val port = portText.toIntOrNull()
             if (port == null || port < 1 || port > 65535) {
@@ -187,7 +189,11 @@ class SettingsViewModel(
             }
             _userMessage.value = appCtx.getString(R.string.test_feedback_connecting)
             val result = withContext(Dispatchers.IO) {
-                HaConnectionTester.testHttpGet(app.okHttpClient, healthUrl)
+                HaConnectionTester.testHttpGet(
+                    app.okHttpClient,
+                    healthUrl,
+                    bearerToken = apiKey.trim(),
+                )
             }
             _userMessage.value = result.fold(
                 onSuccess = {
