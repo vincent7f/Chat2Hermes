@@ -44,6 +44,7 @@ class TtsManager(
         engine: TtsEngineType,
         networkBaseUrl: String,
         networkApiKey: String,
+        networkModel: String,
         onNetworkError: (String) -> Unit,
     ) {
         val text = MessageSanitizer.forSpeech(rawText)
@@ -53,7 +54,7 @@ class TtsManager(
             TtsEngineType.SYSTEM -> mainHandler.post { speakSystem(text) }
             TtsEngineType.NETWORK -> {
                 Thread {
-                    val ok = tryNetworkTts(text, networkBaseUrl, networkApiKey)
+                    val ok = tryNetworkTts(text, networkBaseUrl, networkApiKey, networkModel)
                     if (!ok) {
                         mainHandler.post {
                             onNetworkError("Network TTS failed; using system TTS.")
@@ -71,11 +72,14 @@ class TtsManager(
         engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "herdroid")
     }
 
-    private fun tryNetworkTts(text: String, baseUrl: String, apiKey: String): Boolean {
+    private fun tryNetworkTts(text: String, baseUrl: String, apiKey: String, model: String): Boolean {
         val root = baseUrl.trim().trimEnd('/')
         if (root.isEmpty()) return false
         val url = "$root/tts"
-        val json = JSONObject().put("text", text).toString()
+        val json = JSONObject().put("text", text).apply {
+            val m = model.trim()
+            if (m.isNotEmpty()) put("model", m)
+        }.toString()
         val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
         val builder = Request.Builder().url(url).post(body)
         if (apiKey.isNotEmpty()) {
@@ -114,12 +118,13 @@ class TtsManager(
     fun testNetworkTts(
         networkBaseUrl: String,
         networkApiKey: String,
+        networkModel: String,
         sampleText: String,
         onResult: (success: Boolean, detail: String) -> Unit,
     ) {
         Thread {
             try {
-                val ok = tryNetworkTts(sampleText, networkBaseUrl, networkApiKey)
+                val ok = tryNetworkTts(sampleText, networkBaseUrl, networkApiKey, networkModel)
                 mainHandler.post {
                     onResult(
                         ok,

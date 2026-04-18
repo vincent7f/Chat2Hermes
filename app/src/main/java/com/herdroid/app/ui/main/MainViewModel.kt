@@ -69,6 +69,7 @@ class MainViewModel(
                         engine = prefs.ttsEngine,
                         networkBaseUrl = prefs.networkTtsBaseUrl,
                         networkApiKey = prefs.networkTtsApiKey,
+                        networkModel = prefs.networkTtsModel,
                         onNetworkError = { err -> _userMessage.value = err },
                     )
                 }

@@ -60,7 +60,7 @@ private val SCHEME_OPTIONS = listOf("ws", "wss", "http", "https")
 
 private fun normalizeScheme(value: String): String {
     val lower = value.lowercase().trim()
-    return if (lower in SCHEME_OPTIONS) lower else "ws"
+    return if (lower in SCHEME_OPTIONS) lower else "http"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,6 +83,7 @@ fun SettingsScreen(
     var ttsEngine by remember { mutableStateOf(prefs.ttsEngine) }
     var networkBase by remember { mutableStateOf(prefs.networkTtsBaseUrl) }
     var apiKey by remember { mutableStateOf(prefs.networkTtsApiKey) }
+    var networkModel by remember { mutableStateOf(prefs.networkTtsModel) }
     var portError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(prefs) {
@@ -92,6 +93,7 @@ fun SettingsScreen(
         ttsEngine = prefs.ttsEngine
         networkBase = prefs.networkTtsBaseUrl
         apiKey = prefs.networkTtsApiKey
+        networkModel = prefs.networkTtsModel
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -301,9 +303,17 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
+            OutlinedTextField(
+                value = networkModel,
+                onValueChange = { networkModel = it },
+                label = { Text(stringResource(R.string.network_tts_model)) },
+                placeholder = { Text(stringResource(R.string.hint_network_tts_model)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
             OutlinedButton(
                 onClick = {
-                    viewModel.testNetworkTts(networkBase, apiKey)
+                    viewModel.testNetworkTts(networkBase, apiKey, networkModel)
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -324,6 +334,7 @@ fun SettingsScreen(
                         ttsEngine = ttsEngine,
                         networkTtsBaseUrl = networkBase,
                         networkTtsApiKey = apiKey,
+                        networkTtsModel = networkModel,
                     )
                     onBack()
                 },

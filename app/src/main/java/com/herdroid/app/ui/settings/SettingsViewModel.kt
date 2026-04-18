@@ -156,6 +156,7 @@ class SettingsViewModel(
         ttsEngine: TtsEngineType,
         networkTtsBaseUrl: String,
         networkTtsApiKey: String,
+        networkTtsModel: String,
     ) {
         viewModelScope.launch {
             repository.update(
@@ -166,6 +167,7 @@ class SettingsViewModel(
                 ttsEngine = ttsEngine,
                 networkTtsBaseUrl = networkTtsBaseUrl,
                 networkTtsApiKey = networkTtsApiKey,
+                networkTtsModel = networkTtsModel,
             )
         }
     }
@@ -200,7 +202,7 @@ class SettingsViewModel(
         }
     }
 
-    fun testNetworkTts(networkBaseUrl: String, networkApiKey: String) {
+    fun testNetworkTts(networkBaseUrl: String, networkApiKey: String, networkModel: String) {
         val root = networkBaseUrl.trim()
         if (root.isEmpty()) {
             _userMessage.value = appCtx.getString(R.string.test_feedback_tts_url_empty)
@@ -208,7 +210,7 @@ class SettingsViewModel(
         }
         _userMessage.value = appCtx.getString(R.string.test_feedback_tts_testing)
         val sample = appCtx.getString(R.string.network_tts_test_phrase)
-        app.ttsManager.testNetworkTts(root, networkApiKey.trim(), sample) { success, detail ->
+        app.ttsManager.testNetworkTts(root, networkApiKey.trim(), networkModel, sample) { success, detail ->
             _userMessage.value = if (success) {
                 appCtx.getString(R.string.test_feedback_tts_ok)
             } else {

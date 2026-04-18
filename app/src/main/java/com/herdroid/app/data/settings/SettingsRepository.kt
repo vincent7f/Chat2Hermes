@@ -22,6 +22,7 @@ class SettingsRepository(private val context: Context) {
         val TTS_ENGINE = stringPreferencesKey("tts_engine")
         val NETWORK_TTS_BASE = stringPreferencesKey("network_tts_base_url")
         val NETWORK_TTS_API_KEY = stringPreferencesKey("network_tts_api_key")
+        val NETWORK_TTS_MODEL = stringPreferencesKey("network_tts_model")
     }
 
     val preferencesFlow: Flow<UserPreferences> = context.dataStore.data.map { p ->
@@ -36,6 +37,7 @@ class SettingsRepository(private val context: Context) {
         ttsEngine: TtsEngineType,
         networkTtsBaseUrl: String,
         networkTtsApiKey: String,
+        networkTtsModel: String,
     ) {
         context.dataStore.edit { prefs ->
             prefs[Keys.SCHEME] = scheme.trim()
@@ -45,6 +47,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.TTS_ENGINE] = ttsEngine.name
             prefs[Keys.NETWORK_TTS_BASE] = networkTtsBaseUrl.trim()
             prefs[Keys.NETWORK_TTS_API_KEY] = networkTtsApiKey.trim()
+            prefs[Keys.NETWORK_TTS_MODEL] = networkTtsModel.trim()
         }
     }
 
@@ -57,13 +60,14 @@ class SettingsRepository(private val context: Context) {
         val engine = runCatching { TtsEngineType.valueOf(engineName) }
             .getOrDefault(TtsEngineType.SYSTEM)
         return UserPreferences(
-            scheme = this[Keys.SCHEME] ?: "ws",
-            host = this[Keys.HOST] ?: "",
-            port = this[Keys.PORT] ?: 8080,
+            scheme = this[Keys.SCHEME] ?: "http",
+            host = this[Keys.HOST] ?: "192.168.3.112",
+            port = this[Keys.PORT] ?: 8642,
             autoPlayTts = this[Keys.AUTO_PLAY_TTS] ?: false,
             ttsEngine = engine,
-            networkTtsBaseUrl = this[Keys.NETWORK_TTS_BASE] ?: "",
+            networkTtsBaseUrl = this[Keys.NETWORK_TTS_BASE] ?: "http://192.168.3.112:8642",
             networkTtsApiKey = this[Keys.NETWORK_TTS_API_KEY] ?: "",
+            networkTtsModel = this[Keys.NETWORK_TTS_MODEL] ?: "hermes-agent",
         )
     }
 }
