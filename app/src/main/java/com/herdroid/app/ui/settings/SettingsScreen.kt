@@ -1,8 +1,7 @@
 package com.herdroid.app.ui.settings
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,8 +23,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -120,25 +121,44 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = scheme,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text(stringResource(R.string.scheme_label)) },
-                    trailingIcon = {
-                        Icon(
-                            Icons.Default.ArrowDropDown,
-                            contentDescription = stringResource(R.string.cd_scheme_dropdown),
+            // Use Surface(onClick) instead of overlay on OutlinedTextField: in verticalScroll + unbounded
+            // height, overlay match was wrong and the clickable layer could get 0 height.
+            Surface(
+                onClick = { schemePickerVisible = true },
+                modifier = Modifier.fillMaxWidth(),
+                shape = OutlinedTextFieldDefaults.shape,
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outline,
+                ),
+                shadowElevation = 0.dp,
+                tonalElevation = 0.dp,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(OutlinedTextFieldDefaults.contentPadding())
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.scheme_label),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .clickable { schemePickerVisible = true },
-                )
+                        Text(
+                            text = scheme,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Filled.ArrowDropDown,
+                        contentDescription = stringResource(R.string.cd_scheme_dropdown),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             if (schemePickerVisible) {
                 AlertDialog(
