@@ -2,8 +2,10 @@ package com.herdroid.app.ui.settings
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +20,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -89,7 +92,7 @@ fun SettingsScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val userMessage by viewModel.userMessage.collectAsStateWithLifecycle()
-    val autoDetectRunning by viewModel.autoDetectRunning.collectAsStateWithLifecycle()
+    val autoDetectUi by viewModel.autoDetectUi.collectAsStateWithLifecycle()
     val pendingAutoFill by viewModel.pendingAutoFill.collectAsStateWithLifecycle()
 
     LaunchedEffect(userMessage) {
@@ -106,10 +109,11 @@ fun SettingsScreen(
         viewModel.consumePendingAutoFill()
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
+    Box(modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
@@ -222,7 +226,7 @@ fun SettingsScreen(
             )
             OutlinedButton(
                 onClick = { viewModel.autoDetect(host) },
-                enabled = !autoDetectRunning && host.isNotBlank(),
+                enabled = autoDetectUi is AutoDetectUiState.Idle && host.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(R.string.auto_detect))
@@ -321,6 +325,67 @@ fun SettingsScreen(
             ) {
                 Text(stringResource(R.string.save))
             }
+        }
+        }
+
+        when (val ui = autoDetectUi) {
+            is AutoDetectUiState.Scanning -> {
+                AlertDialog(
+                    onDismissRequest = { viewModel.cancelAutoDetect() },
+                    title = { Text(stringResource(R.string.auto_detect_progress_title)) },
+                    text = {
+                        Column {
+                            LinearProgressIndicator(
+                                progress = { ui.currentIndex.toFloat() / ui.total.toFloat().coerceAtLeast(1f) },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = stringResource(
+                                    R.string.auto_detect_progress_body,
+                                    ui.currentIndex,
+                                    ui.total,
+                                    ui.scheme,
+                                    ui.port,
+                                ),
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { viewModel.cancelAutoDetect() }) {
+                            Text(stringResource(R.string.auto_detect_interrupt))
+                        }
+                    },
+                )
+            }
+
+            is AutoDetectUiState.AskingUser -> {
+                AlertDialog(
+                    onDismissRequest = { viewModel.cancelAutoDetect() },
+                    title = { Text(stringResource(R.string.auto_detect_ask_title)) },
+                    text = {
+                        Text(
+                            stringResource(
+                                R.string.auto_detect_ask_message,
+                                ui.scheme,
+                                ui.port,
+                            ),
+                        )
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { viewModel.onAutoDetectSkipFound() }) {
+                            Text(stringResource(R.string.auto_detect_skip_continue))
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = { viewModel.onAutoDetectAcceptFound() }) {
+                            Text(stringResource(R.string.auto_detect_use_confirm))
+                        }
+                    },
+                )
+            }
+
+            else -> {}
         }
     }
 }

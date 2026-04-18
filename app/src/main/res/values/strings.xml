@@ -30,8 +30,14 @@
     <string name="auto_detect">自动检测协议与端口</string>
     <string name="auto_detect_hint">将依次尝试 ws / wss 与端口 80、8000、8080、8765 等（同一局域网）。</string>
     <string name="auto_detect_need_host">请先填写地址（IP 或主机名）</string>
-    <string name="auto_detect_scanning">正在自动检测 WebSocket 端点…</string>
-    <string name="auto_detect_success">已检测到：%1$s，端口 %2$d</string>
+    <string name="auto_detect_progress_title">自动检测</string>
+    <string name="auto_detect_progress_body">正在检测第 %1$d / %2$d 个组合。\n当前协议：%3$s，端口：%4$d</string>
+    <string name="auto_detect_interrupt">中断</string>
+    <string name="auto_detect_ask_title">发现可用端点</string>
+    <string name="auto_detect_ask_message">已检测到可建立 WebSocket 连接：\n协议 %1$s，端口 %2$d\n\n是否将该组合写入上方「访问协议」与「端口」？</string>
+    <string name="auto_detect_use_confirm">使用此组合</string>
+    <string name="auto_detect_skip_continue">继续检测</string>
+    <string name="auto_detect_applied">已写入协议 %1$s 与端口 %2$d</string>
     <string name="auto_detect_failed">未检测到可用的 WebSocket 端点，请手动填写协议与端口</string>
     <string name="test_connection">测试访问协议（WebSocket）</string>
     <string name="test_network_tts">测试局域网网络 TTS</string>

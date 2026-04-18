@@ -12,7 +12,11 @@ import com.herdroid.app.data.settings.TtsEngineType
 import com.herdroid.app.domain.HaConnectionTester
 import com.herdroid.app.domain.HaEndpointScanner
 import com.herdroid.app.domain.WebSocketUrlFactory
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,11 +34,16 @@ class SettingsViewModel(
     private val _userMessage = MutableStateFlow<String?>(null)
     val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
 
-    private val _autoDetectRunning = MutableStateFlow(false)
-    val autoDetectRunning: StateFlow<Boolean> = _autoDetectRunning.asStateFlow()
+    private val _autoDetectUi = MutableStateFlow<AutoDetectUiState>(AutoDetectUiState.Idle)
+    val autoDetectUi: StateFlow<AutoDetectUiState> = _autoDetectUi.asStateFlow()
 
     private val _pendingAutoFill = MutableStateFlow<AutoDetectFill?>(null)
     val pendingAutoFill: StateFlow<AutoDetectFill?> = _pendingAutoFill.asStateFlow()
+
+    private var autoDetectJob: Job? = null
+    private var confirmDeferred: CompletableDeferred<Boolean>? = null
+
+    private val appCtx: Application get() = getApplication()
 
     fun clearUserMessage() {
         _userMessage.value = null
@@ -44,37 +53,96 @@ class SettingsViewModel(
         _pendingAutoFill.value = null
     }
 
-    /**
-     * 根据已填主机（IP/域名）扫描 ws/wss 与 [HaEndpointScanner.DEFAULT_PORTS]，成功则写入 [pendingAutoFill] 供界面合并。
-     */
+    fun cancelAutoDetect() {
+        confirmDeferred?.cancel(CancellationException("cancelled"))
+        confirmDeferred = null
+        autoDetectJob?.cancel()
+        autoDetectJob = null
+        if (_autoDetectUi.value !is AutoDetectUiState.Idle) {
+            _autoDetectUi.value = AutoDetectUiState.Idle
+        }
+    }
+
+    /** User chose to apply the found scheme/port. */
+    fun onAutoDetectAcceptFound() {
+        confirmDeferred?.complete(true)
+    }
+
+    /** User chose to keep scanning for another endpoint. */
+    fun onAutoDetectSkipFound() {
+        confirmDeferred?.complete(false)
+    }
+
     fun autoDetect(hostInput: String) {
-        viewModelScope.launch {
-            val host = hostInput.trim()
-            if (host.isEmpty()) {
-                _userMessage.value = getApplication<Application>().getString(R.string.auto_detect_need_host)
-                return@launch
-            }
-            _autoDetectRunning.value = true
+        val host = hostInput.trim()
+        if (host.isEmpty()) {
+            _userMessage.value = appCtx.getString(R.string.auto_detect_need_host)
+            return
+        }
+        cancelAutoDetect()
+        autoDetectJob = viewModelScope.launch {
+            val schemes = HaEndpointScanner.DEFAULT_WS_SCHEMES
+            val ports = HaEndpointScanner.DEFAULT_PORTS
+            val total = schemes.size * ports.size
+            var index = 0
             try {
-                _userMessage.value = getApplication<Application>().getString(R.string.auto_detect_scanning)
-                val result = withContext(Dispatchers.IO) {
-                    HaEndpointScanner.findFirstWebSocket(app.okHttpClient, host)
+                for (sch in schemes) {
+                    for (port in ports) {
+                        ensureActive()
+                        index++
+                        withContext(Dispatchers.Main.immediate) {
+                            _autoDetectUi.value = AutoDetectUiState.Scanning(
+                                currentIndex = index,
+                                total = total,
+                                scheme = sch,
+                                port = port,
+                            )
+                        }
+                        val url = WebSocketUrlFactory.build(sch, host, port) ?: continue
+                        val result = withContext(Dispatchers.IO) {
+                            HaConnectionTester.testWebSocket(
+                                app.okHttpClient,
+                                url,
+                                HaEndpointScanner.DEFAULT_TIMEOUT_MS,
+                            )
+                        }
+                        if (result.isFailure) continue
+
+                        val d = CompletableDeferred<Boolean>()
+                        confirmDeferred = d
+                        withContext(Dispatchers.Main.immediate) {
+                            _autoDetectUi.value = AutoDetectUiState.AskingUser(scheme = sch, port = port)
+                        }
+                        val accepted = try {
+                            d.await()
+                        } catch (e: CancellationException) {
+                            throw e
+                        } finally {
+                            confirmDeferred = null
+                        }
+                        if (accepted) {
+                            _pendingAutoFill.value = AutoDetectFill(scheme = sch, port = port)
+                            _userMessage.value = appCtx.getString(
+                                R.string.auto_detect_applied,
+                                sch,
+                                port,
+                            )
+                            _autoDetectUi.value = AutoDetectUiState.Idle
+                            return@launch
+                        }
+                    }
                 }
-                result.fold(
-                    onSuccess = { (sch, port) ->
-                        _pendingAutoFill.value = AutoDetectFill(scheme = sch, port = port)
-                        _userMessage.value = getApplication<Application>().getString(
-                            R.string.auto_detect_success,
-                            sch,
-                            port,
-                        )
-                    },
-                    onFailure = {
-                        _userMessage.value = getApplication<Application>().getString(R.string.auto_detect_failed)
-                    },
-                )
+                _userMessage.value = appCtx.getString(R.string.auto_detect_failed)
+            } catch (e: CancellationException) {
+                // user hit interrupt; stay silent or short message
             } finally {
-                _autoDetectRunning.value = false
+                autoDetectJob = null
+                confirmDeferred = null
+                withContext(Dispatchers.Main.immediate) {
+                    if (_autoDetectUi.value !is AutoDetectUiState.Idle) {
+                        _autoDetectUi.value = AutoDetectUiState.Idle
+                    }
+                }
             }
         }
     }
@@ -105,24 +173,24 @@ class SettingsViewModel(
         viewModelScope.launch {
             val port = portText.toIntOrNull()
             if (port == null || port < 1 || port > 65535) {
-                _userMessage.value = getApplication<Application>().getString(R.string.test_feedback_port_invalid)
+                _userMessage.value = appCtx.getString(R.string.test_feedback_port_invalid)
                 return@launch
             }
             val url = WebSocketUrlFactory.build(scheme, host, port)
             if (url == null) {
-                _userMessage.value = getApplication<Application>().getString(R.string.test_feedback_host_empty)
+                _userMessage.value = appCtx.getString(R.string.test_feedback_host_empty)
                 return@launch
             }
-            _userMessage.value = getApplication<Application>().getString(R.string.test_feedback_connecting)
+            _userMessage.value = appCtx.getString(R.string.test_feedback_connecting)
             val result = withContext(Dispatchers.IO) {
                 HaConnectionTester.testWebSocket(app.okHttpClient, url)
             }
             _userMessage.value = result.fold(
                 onSuccess = {
-                    getApplication<Application>().getString(R.string.test_feedback_ws_ok)
+                    appCtx.getString(R.string.test_feedback_ws_ok)
                 },
                 onFailure = { t ->
-                    getApplication<Application>().getString(
+                    appCtx.getString(
                         R.string.test_feedback_ws_fail,
                         t.message ?: t.javaClass.simpleName,
                     )
@@ -134,19 +202,19 @@ class SettingsViewModel(
     fun testNetworkTts(networkBaseUrl: String, networkApiKey: String) {
         val root = networkBaseUrl.trim()
         if (root.isEmpty()) {
-            _userMessage.value = getApplication<Application>().getString(R.string.test_feedback_tts_url_empty)
+            _userMessage.value = appCtx.getString(R.string.test_feedback_tts_url_empty)
             return
         }
-        _userMessage.value = getApplication<Application>().getString(R.string.test_feedback_tts_testing)
-        val sample = getApplication<Application>().getString(R.string.network_tts_test_phrase)
+        _userMessage.value = appCtx.getString(R.string.test_feedback_tts_testing)
+        val sample = appCtx.getString(R.string.network_tts_test_phrase)
         app.ttsManager.testNetworkTts(root, networkApiKey.trim(), sample) { success, detail ->
             _userMessage.value = if (success) {
-                getApplication<Application>().getString(R.string.test_feedback_tts_ok)
+                appCtx.getString(R.string.test_feedback_tts_ok)
             } else {
                 if (detail == "play_or_http_failed") {
-                    getApplication<Application>().getString(R.string.test_feedback_tts_fail_generic)
+                    appCtx.getString(R.string.test_feedback_tts_fail_generic)
                 } else {
-                    getApplication<Application>().getString(R.string.test_feedback_tts_fail_detail, detail)
+                    appCtx.getString(R.string.test_feedback_tts_fail_detail, detail)
                 }
             }
         }
