@@ -101,6 +101,11 @@ fun MainScreen(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        Text(
+                            text = stringResource(R.string.read_aloud_reply_label),
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(end = 4.dp),
+                        )
                         Switch(
                             checked = prefs.autoPlayTts,
                             onCheckedChange = viewModel::setAutoPlayTts,
