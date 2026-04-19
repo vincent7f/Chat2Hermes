@@ -56,6 +56,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.zIndex
@@ -70,6 +71,10 @@ import androidx.core.view.ViewCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.herdroid.app.R
 import com.herdroid.app.data.settings.UserPreferences
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 @Composable
 fun MainScreen(
@@ -82,6 +87,12 @@ fun MainScreen(
     val chatMessages by viewModel.chatMessages.collectAsState()
     val prefs by viewModel.preferences.collectAsStateWithLifecycle(initialValue = UserPreferences.DEFAULT)
     val cdAutoPlayTts = stringResource(R.string.cd_auto_play_tts)
+
+    val chatTimeFormatter = remember {
+        SimpleDateFormat("HH:mm", Locale.getDefault()).apply {
+            timeZone = TimeZone.getDefault()
+        }
+    }
 
     val snackbarHostState = remember { SnackbarHostState() }
     var inputText by remember { mutableStateOf("") }
@@ -172,17 +183,33 @@ fun MainScreen(
                     itemsIndexed(
                         chatMessages,
                         key = { _, msg -> msg.id },
-                    ) { _, msg ->
+                    ) { index, msg ->
+                        val prev = chatMessages.getOrNull(index - 1)
+                        val showTimestamp = prev == null ||
+                            (msg.timeMillis - prev.timeMillis) >= CHAT_TIMESTAMP_GAP_MS
                         val showStreamingPlaceholder =
                             msg.role == ChatMessageRole.Assistant && msg.text.isEmpty()
-                        ChatBubble(
-                            message = msg,
-                            showStreamingPlaceholder = showStreamingPlaceholder,
-                            autoPlayTts = prefs.autoPlayTts,
-                            onReadAloud = { viewModel.readMessageAloud(msg.text) },
-                            onResend = { viewModel.sendChatMessage(msg.text) },
-                            onCopy = { viewModel.copyMessageToClipboard(msg.text) },
-                        )
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            if (showTimestamp) {
+                                Text(
+                                    text = "[${chatTimeFormatter.format(Date(msg.timeMillis))}]",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 4.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+                            ChatBubble(
+                                message = msg,
+                                showStreamingPlaceholder = showStreamingPlaceholder,
+                                autoPlayTts = prefs.autoPlayTts,
+                                onReadAloud = { viewModel.readMessageAloud(msg.text) },
+                                onResend = { viewModel.sendChatMessage(msg.text) },
+                                onCopy = { viewModel.copyMessageToClipboard(msg.text) },
+                            )
+                        }
                     }
                 }
             }

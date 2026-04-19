@@ -87,11 +87,13 @@ class MainViewModel(
                 return@launch
             }
 
+            val nowMillis = System.currentTimeMillis()
             val userMsg = ChatUiMessage(
                 id = ++chatMessageSeq,
                 role = ChatMessageRole.User,
                 text = trimmed,
                 userSendState = UserMessageSendState.Sending,
+                timeMillis = nowMillis,
             )
             val userMsgId = userMsg.id
             val apiMessages = _chatMessages.value.map { m ->
@@ -106,6 +108,7 @@ class MainViewModel(
                 role = ChatMessageRole.Assistant,
                 text = "",
                 replyComplete = false,
+                timeMillis = nowMillis,
             )
             val assistantMsgId = assistantMsg.id
             _chatMessages.update { it + userMsg + assistantMsg }
