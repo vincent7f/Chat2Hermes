@@ -9,6 +9,9 @@ import org.json.JSONObject
 
 /**
  * OpenAI 兼容 Chat Completions（[POST /v1/chat/completions](https://platform.openai.com/docs/api-reference/chat/create)）。
+ *
+ * 对接 Hermes Agent API Server 时见项目内 `docs/HERMES_API_SERVER.md`；官方文档：
+ * [API Server | Hermes Agent](https://hermes-agent.nousresearch.com/docs/user-guide/features/api-server?sharetype=wechat)。
  */
 class OpenAiChatClient(private val httpClient: OkHttpClient) {
 

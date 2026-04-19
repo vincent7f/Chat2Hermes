@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * 主界面与设置页与 Hermes 的 OpenAI 兼容对话共用：同一套根 URL（[HealthCheckUrlFactory.buildHttpOrigin]）与 [OpenAiChatClient.chatCompletions]。
+ * Hermes API Server 说明见 `docs/HERMES_API_SERVER.md`。
  */
 object OpenAiChatFromSettings {
 

@@ -13,6 +13,7 @@
 | [docs/UI_UX.md](docs/UI_UX.md) | UI/UX 与无障碍 |
 | [docs/PRIVACY_AND_SECURITY.md](docs/PRIVACY_AND_SECURITY.md) | 隐私与安全 |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | 构建、验证与 Git 工作流 |
+| [docs/HERMES_API_SERVER.md](docs/HERMES_API_SERVER.md) | Hermes API Server 官方说明与客户端约定（超时、鉴权等） |
 
 ## 功能摘要
 
