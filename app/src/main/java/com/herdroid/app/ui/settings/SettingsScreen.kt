@@ -47,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.herdroid.app.R
 import com.herdroid.app.data.settings.SettingsRepository
 import com.herdroid.app.data.settings.UserPreferences
+import com.herdroid.app.domain.HealthCheckUrlFactory
 
 private val SCHEME_OPTIONS = listOf("http", "https")
 
@@ -77,7 +78,6 @@ fun SettingsScreen(
     var schemePickerVisible by remember { mutableStateOf(false) }
     var host by remember { mutableStateOf(prefs.host) }
     var portText by remember { mutableStateOf(prefs.port.toString()) }
-    var apiBaseUrl by remember { mutableStateOf(prefs.apiBaseUrl) }
     var apiKey by remember { mutableStateOf(prefs.apiKey) }
     var modelName by remember { mutableStateOf(prefs.modelName) }
     var portError by remember { mutableStateOf<String?>(null) }
@@ -86,7 +86,6 @@ fun SettingsScreen(
         scheme = normalizeScheme(prefs.scheme)
         host = prefs.host
         portText = prefs.port.toString()
-        apiBaseUrl = prefs.apiBaseUrl
         apiKey = prefs.apiKey
         modelName = prefs.modelName
     }
@@ -237,6 +236,20 @@ fun SettingsScreen(
             ) {
                 Text(stringResource(R.string.test_connection))
             }
+            val chatApiPreview = remember(scheme, host, portText) {
+                val p = portText.toIntOrNull()
+                if (p == null || p < 1 || p > 65535) null
+                else HealthCheckUrlFactory.buildHttpOrigin(normalizeScheme(scheme), host, p)
+            }
+            Text(
+                text = if (chatApiPreview != null) {
+                    stringResource(R.string.chat_api_root_preview, chatApiPreview)
+                } else {
+                    stringResource(R.string.chat_api_root_preview_invalid)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             OutlinedTextField(
                 value = apiKey,
                 onValueChange = { apiKey = it },
@@ -252,15 +265,6 @@ fun SettingsScreen(
                 singleLine = true,
             )
             OutlinedTextField(
-                value = apiBaseUrl,
-                onValueChange = { apiBaseUrl = it },
-                label = { Text(stringResource(R.string.api_service_base_url)) },
-                placeholder = { Text(stringResource(R.string.hint_api_service_base_url)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = false,
-                minLines = 2,
-            )
-            OutlinedTextField(
                 value = modelName,
                 onValueChange = { modelName = it },
                 label = { Text(stringResource(R.string.model_name_label)) },
@@ -270,7 +274,7 @@ fun SettingsScreen(
             )
             OutlinedButton(
                 onClick = {
-                    viewModel.testChatCompletion(apiBaseUrl, apiKey, modelName)
+                    viewModel.testChatCompletion(scheme, host, portText, apiKey, modelName)
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -292,7 +296,6 @@ fun SettingsScreen(
                         scheme = scheme,
                         host = host,
                         port = port,
-                        apiBaseUrl = apiBaseUrl,
                         apiKey = apiKey,
                         modelName = modelName,
                     )

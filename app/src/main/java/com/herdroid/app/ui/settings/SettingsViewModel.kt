@@ -50,7 +50,6 @@ class SettingsViewModel(
         scheme: String,
         host: String,
         port: Int,
-        apiBaseUrl: String,
         apiKey: String,
         modelName: String,
     ) {
@@ -59,7 +58,6 @@ class SettingsViewModel(
                 scheme = scheme,
                 host = host,
                 port = port,
-                apiBaseUrl = apiBaseUrl,
                 apiKey = apiKey,
                 modelName = modelName,
             )
@@ -105,9 +103,14 @@ class SettingsViewModel(
         }
     }
 
-    fun testChatCompletion(apiBaseUrl: String, apiKey: String, model: String) {
-        val root = apiBaseUrl.trim()
-        if (root.isEmpty()) {
+    fun testChatCompletion(scheme: String, host: String, portText: String, apiKey: String, model: String) {
+        val port = portText.toIntOrNull()
+        if (port == null || port < 1 || port > 65535) {
+            _userMessage.value = appCtx.getString(R.string.test_feedback_port_invalid)
+            return
+        }
+        val root = HealthCheckUrlFactory.buildHttpOrigin(scheme, host, port)
+        if (root.isNullOrEmpty()) {
             _userMessage.value = appCtx.getString(R.string.chat_need_base_url)
             return
         }
