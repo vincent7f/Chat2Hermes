@@ -339,7 +339,7 @@ private fun ChatBubble(
                     message = message,
                     displayText = bodyText,
                     showStreamingPlaceholder = showStreamingPlaceholder,
-                    assistantAutoFold = false,
+                    collapseWhenAutoTts = autoPlayTts,
                     menuExpanded = menuExpanded,
                     onMenuExpandedChange = { menuExpanded = it },
                     onReadAloud = onReadAloud,
@@ -355,7 +355,7 @@ private fun ChatBubble(
                 message = message,
                 displayText = bodyText,
                 showStreamingPlaceholder = showStreamingPlaceholder,
-                assistantAutoFold = autoPlayTts,
+                collapseWhenAutoTts = autoPlayTts,
                 menuExpanded = menuExpanded,
                 onMenuExpandedChange = { menuExpanded = it },
                 onReadAloud = onReadAloud,
@@ -372,7 +372,7 @@ private fun MessageBubbleWithMenu(
     message: ChatUiMessage,
     displayText: String,
     showStreamingPlaceholder: Boolean,
-    assistantAutoFold: Boolean,
+    collapseWhenAutoTts: Boolean,
     menuExpanded: Boolean,
     onMenuExpandedChange: (Boolean) -> Unit,
     onReadAloud: () -> Unit,
@@ -380,27 +380,47 @@ private fun MessageBubbleWithMenu(
     onCopy: () -> Unit,
     isUser: Boolean,
 ) {
-    val shouldFold =
+    val shouldFoldAssistant =
         !isUser &&
-            assistantAutoFold &&
+            collapseWhenAutoTts &&
             message.replyComplete &&
             message.text.isNotEmpty() &&
             !showStreamingPlaceholder
+
+    val shouldFoldUser =
+        isUser &&
+            collapseWhenAutoTts &&
+            message.text.isNotEmpty()
+
+    val shouldFold = shouldFoldAssistant || shouldFoldUser
 
     val utf8ByteCount = remember(message.id, message.text) {
         message.text.encodeToByteArray().size
     }
     val cdAssistantCollapsed = stringResource(R.string.cd_assistant_reply_collapsed, utf8ByteCount)
+    val cdUserCollapsed = stringResource(R.string.cd_user_message_collapsed)
 
     var replyExpanded by remember(message.id) { mutableStateOf(true) }
     var didApplyInitialCollapse by remember(message.id) { mutableStateOf(false) }
 
-    LaunchedEffect(message.replyComplete, assistantAutoFold, message.id) {
-        if (isUser || !message.replyComplete) return@LaunchedEffect
-        if (!assistantAutoFold) {
+    LaunchedEffect(
+        message.id,
+        message.replyComplete,
+        collapseWhenAutoTts,
+        isUser,
+    ) {
+        if (!collapseWhenAutoTts) {
             replyExpanded = true
             return@LaunchedEffect
         }
+        if (isUser) {
+            if (message.text.isNotEmpty() && !didApplyInitialCollapse) {
+                replyExpanded = false
+                didApplyInitialCollapse = true
+            }
+            return@LaunchedEffect
+        }
+        if (!message.replyComplete) return@LaunchedEffect
         if (!didApplyInitialCollapse) {
             replyExpanded = false
             didApplyInitialCollapse = true
@@ -443,18 +463,33 @@ private fun MessageBubbleWithMenu(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        Text(
-                            text = stringResource(R.string.chat_reply_byte_count, utf8ByteCount),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier
-                                .weight(1f, fill = false)
-                                .semantics {
-                                    contentDescription = cdAssistantCollapsed
-                                },
-                        )
+                        if (isUser) {
+                            Text(
+                                text = message.text,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .weight(1f, fill = false)
+                                    .semantics {
+                                        contentDescription = cdUserCollapsed
+                                    },
+                            )
+                        } else {
+                            Text(
+                                text = stringResource(R.string.chat_reply_byte_count, utf8ByteCount),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .weight(1f, fill = false)
+                                    .semantics {
+                                        contentDescription = cdAssistantCollapsed
+                                    },
+                            )
+                        }
                         TextButton(
                             onClick = { replyExpanded = true },
                             contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
@@ -472,7 +507,11 @@ private fun MessageBubbleWithMenu(
                         Text(
                             text = message.text,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = if (isUser) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
                         )
                         TextButton(
                             onClick = { replyExpanded = false },
