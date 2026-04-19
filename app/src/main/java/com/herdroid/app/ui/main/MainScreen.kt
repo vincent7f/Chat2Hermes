@@ -1,5 +1,6 @@
 package com.herdroid.app.ui.main
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentDescription
@@ -153,7 +157,12 @@ fun MainScreen(
                     }
                 } else {
                     items(chatMessages, key = { it.id }) { msg ->
-                        ChatBubble(msg)
+                        ChatBubble(
+                            message = msg,
+                            onReadAloud = { viewModel.readMessageAloud(msg.text) },
+                            onResend = { viewModel.sendChatMessage(msg.text) },
+                            onCopy = { viewModel.copyMessageToClipboard(msg.text) },
+                        )
                     }
                 }
             }
@@ -240,26 +249,69 @@ fun MainScreen(
 }
 
 @Composable
-private fun ChatBubble(message: ChatUiMessage) {
+private fun ChatBubble(
+    message: ChatUiMessage,
+    onReadAloud: () -> Unit,
+    onResend: () -> Unit,
+    onCopy: () -> Unit,
+) {
     val isUser = message.role == ChatMessageRole.User
+    var menuExpanded by remember(message.id) { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
     ) {
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = if (isUser) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            },
-            modifier = Modifier.widthIn(max = 320.dp),
-        ) {
-            Text(
-                text = message.text,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(12.dp),
-            )
+        Box {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = if (isUser) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+                modifier = Modifier
+                    .widthIn(max = 320.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onLongPress = { menuExpanded = true },
+                        )
+                    },
+            ) {
+                Text(
+                    text = message.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(12.dp),
+                )
+            }
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false },
+            ) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.chat_menu_read_aloud)) },
+                    onClick = {
+                        menuExpanded = false
+                        onReadAloud()
+                    },
+                )
+                if (isUser) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.chat_menu_resend)) },
+                        onClick = {
+                            menuExpanded = false
+                            onResend()
+                        },
+                    )
+                } else {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.chat_menu_copy)) },
+                        onClick = {
+                            menuExpanded = false
+                            onCopy()
+                        },
+                    )
+                }
+            }
         }
     }
 }

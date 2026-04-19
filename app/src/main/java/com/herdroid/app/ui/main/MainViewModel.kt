@@ -1,6 +1,9 @@
 package com.herdroid.app.ui.main
 
 import android.app.Application
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.herdroid.app.R
@@ -115,13 +118,7 @@ class MainViewModel(
                         }
                         val latestPrefs = settingsRepository.preferencesFlow.first()
                         if (latestPrefs.autoPlayTts) {
-                            if (MediaVolumeChecker.isMediaVolumeBelowHalf(app)) {
-                                showVolumeWarning(app.getString(R.string.volume_warning_low_tts))
-                            } else {
-                                volumeWarningDismissJob?.cancel()
-                                _volumeWarning.value = null
-                            }
-                            ttsSpeaker.speak(reply)
+                            speakWithOptionalVolumeWarning(reply)
                         }
                     },
                     onFailure = { t ->
@@ -135,6 +132,29 @@ class MainViewModel(
                 _chatLoading.value = false
             }
         }
+    }
+
+    /** 长按菜单「朗读」：与自动朗读相同，含音量过低浮窗提示。 */
+    fun readMessageAloud(text: String) {
+        speakWithOptionalVolumeWarning(text)
+    }
+
+    fun copyMessageToClipboard(text: String) {
+        val app = getApplication<Application>()
+        val cm = app.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val label = app.getString(R.string.clipboard_message_label)
+        cm.setPrimaryClip(ClipData.newPlainText(label, text))
+    }
+
+    private fun speakWithOptionalVolumeWarning(plainText: String) {
+        val app = getApplication<Application>()
+        if (MediaVolumeChecker.isMediaVolumeBelowHalf(app)) {
+            showVolumeWarning(app.getString(R.string.volume_warning_low_tts))
+        } else {
+            volumeWarningDismissJob?.cancel()
+            _volumeWarning.value = null
+        }
+        ttsSpeaker.speak(plainText)
     }
 
     private fun showVolumeWarning(message: String) {
