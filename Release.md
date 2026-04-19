@@ -70,6 +70,7 @@ Made-with: Cursor
 
 已合入 **`main`**；初版功能见 `63bd2b5`，后续修订见各条 commit。
 
+- [x] 交付流程（Cursor）：特性合入后同步本小节与 `git` 说明；完整构建验证见 `.cursor/rules/assemble-apk-after-changes.mdc`；Release 条目写法与收尾步骤见 `.cursor/skills/herdroid-release-apk/SKILL.md`。
 - [x] 文本朗读在独立线程编排，主线程仅做必要的 `TextToSpeech.speak` 等调用（详见代码注释）。实现 commit：`3b112e3`（`SystemTtsSpeaker` 后台预处理与分段朗读）
 - [x] 边读边显示：三行歌词式弹窗，中间当前行粗体、向上滚动；暂停与退出。初版：`3b112e3`；修订：`1c71a6c`（`MessageSanitizer.forSpeechPreserveParagraphs`、三行可滚动全文、主线程 `onStart`、末段 `onDone` 后再关窗）
 - [x] 统一收发消息折叠样式：一行内「前缀若干字符 + 展开」。实现 commit：`3b112e3`（`ChatUiStyle` / `collapsedPrefixPreview`）
