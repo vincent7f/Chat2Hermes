@@ -12,4 +12,23 @@ object MessageSanitizer {
             .replace(Regex("\\s+"), " ")
             .trim()
     }
+
+    /**
+     * 与 [forSpeech] 相同清洗规则，但**保留换行**，供歌词式按行分段朗读/UI 使用。
+     * （[forSpeech] 会将 `\s+` 压成空格，会破坏段落结构。）
+     */
+    fun forSpeechPreserveParagraphs(raw: String): String {
+        return raw.split(Regex("\r?\n"))
+            .map { line ->
+                line
+                    .replace(Regex("`+"), " ")
+                    .replace(Regex("\\*+"), " ")
+                    .replace(Regex("#+\\s*"), " ")
+                    .replace(Regex("""\[([^\]]+)]\([^)]+\)""")) { m -> m.groupValues[1] }
+                    .replace(Regex("[ \\t]+"), " ")
+                    .trim()
+            }
+            .filter { it.isNotEmpty() }
+            .joinToString("\n")
+    }
 }

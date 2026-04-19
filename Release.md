@@ -71,7 +71,7 @@ Made-with: Cursor
 功能追踪：完成后将 `- [ ]` 改为 `- [x]` 并填写实现 commit。
 
 - [x] 文本朗读在独立线程编排，主线程仅做必要的 `TextToSpeech.speak` 等调用（详见代码注释）。实现 commit：`3b112e3`（`SystemTtsSpeaker` 后台预处理与分段朗读）
-- [x] 边读边显示：三行歌词式弹窗，中间当前行粗体、向上滚动；暂停与退出。实现 commit：`3b112e3`（`TtsLyricUiState` + `MainScreen` 弹窗）
+- [x] 边读边显示：三行歌词式弹窗，中间当前行粗体、向上滚动；暂停与退出。实现 commit：`3b112e3`（初版）；修订：保留分段换行（`forSpeechPreserveParagraphs`）、三行区可滚动展示全文、朗读进度回调切主线程、末段播完再关窗（见含 `fix(tts): lyric dialog` 的提交）。
 - [x] 统一收发消息折叠样式：一行内「前缀若干字符 + 展开」。实现 commit：`3b112e3`（`ChatUiStyle` / `collapsedPrefixPreview`）
 - [x] 接收回复流式阶段：单行展示并以总长度更新，减少界面跳动。实现 commit：`3b112e3`（`ChatBubble` 流式摘要行）
 - [x] 回复消息快捷菜单增加「展开说说」。实现 commit：`3b112e3`（菜单项 + `scrollToItem`）

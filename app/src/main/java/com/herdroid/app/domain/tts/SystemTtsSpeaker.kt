@@ -51,15 +51,20 @@ class SystemTtsSpeaker(app: Application) {
                     engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                         override fun onStart(utteranceId: String?) {
                             val idx = utteranceId?.toIntOrNull() ?: return
-                            lyricCurrentIndex.set(idx)
-                            lyricCallback?.onLineWindow(windowForIndex(idx))
+                            mainHandler.post {
+                                lyricCurrentIndex.set(idx)
+                                lyricCallback?.onLineWindow(windowForIndex(idx))
+                            }
                         }
 
                         override fun onDone(utteranceId: String?) {
                             val idx = utteranceId?.toIntOrNull() ?: return
                             val total = lyricTotal.get()
-                            if (idx == total - 1) {
-                                mainHandler.post { finishLyricPlayback() }
+                            mainHandler.post {
+                                if (idx == total - 1) {
+                                    lyricCallback?.onLineWindow(windowForIndex(idx))
+                                    finishLyricPlayback()
+                                }
                             }
                         }
 
@@ -108,7 +113,7 @@ class SystemTtsSpeaker(app: Application) {
      */
     fun speakWithLyrics(text: String, callback: LyricPlaybackCallback) {
         prepExecutor.execute {
-            val plain = MessageSanitizer.forSpeech(text).take(MAX_TTS_CHARS)
+            val plain = MessageSanitizer.forSpeechPreserveParagraphs(text).take(MAX_TTS_CHARS)
             if (plain.isEmpty()) {
                 mainHandler.post { callback.onError("empty") }
                 return@execute
@@ -237,7 +242,8 @@ class SystemTtsSpeaker(app: Application) {
 
     companion object {
         private const val MAX_TTS_CHARS = 4000
-        private const val MAX_LINE_CHARS = 120
+        /** 单行过长时再按句读切分（保留换行后多数段落不会触发）。 */
+        private const val MAX_LINE_CHARS = 2000
 
         fun splitLinesForLyrics(plain: String): List<String> {
             val byNewline = plain.split('\n').map { it.trim() }.filter { it.isNotEmpty() }

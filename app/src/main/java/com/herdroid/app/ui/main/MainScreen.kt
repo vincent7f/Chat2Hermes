@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,6 +28,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -68,6 +70,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -342,6 +345,12 @@ private fun TtsLyricDialog(
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val config = LocalConfiguration.current
+    val lyricScrollMaxHeight = (config.screenHeightDp * 0.45f).dp
+    val lyricScroll = rememberScrollState()
+    LaunchedEffect(state.lineIndex) {
+        lyricScroll.scrollTo(0)
+    }
     Dialog(onDismissRequest = onExit) {
         Card(
             modifier = modifier.fillMaxWidth(),
@@ -358,26 +367,31 @@ private fun TtsLyricDialog(
                     text = stringResource(R.string.tts_lyric_title),
                     style = MaterialTheme.typography.titleMedium,
                 )
-                Text(
-                    text = state.previousLine,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = state.currentLine,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                    maxLines = 4,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = state.nextLine,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = lyricScrollMaxHeight)
+                        .verticalScroll(lyricScroll),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(
+                        text = state.previousLine,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        text = state.currentLine,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        text = state.nextLine,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
                 Text(
                     text = stringResource(
                         R.string.tts_lyric_line_progress,
