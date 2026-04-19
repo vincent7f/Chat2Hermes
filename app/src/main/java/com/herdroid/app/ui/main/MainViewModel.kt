@@ -14,15 +14,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * 主界面仅负责 **OpenAI 兼容** `POST /v1/chat/completions` 对话；
- * 与设置页「测试对话」相同：通过 [OpenAiChatFromSettings] 由协议/地址/端口拼根地址并请求。
- */
+/** 主界面 OpenAI 兼容对话；发送前对 preferencesFlow 取 first()，保证使用已落盘的 API Key 等设置。 */
 class MainViewModel(
     application: Application,
     private val settingsRepository: SettingsRepository,
@@ -54,18 +52,18 @@ class MainViewModel(
     fun sendChatMessage(userText: String) {
         val trimmed = userText.trim()
         if (trimmed.isEmpty() || _chatLoading.value) return
-        val prefs = preferences.value
         val app = getApplication<Application>()
-        when (val outcome = OpenAiChatFromSettings.prepareFromPreferences(prefs)) {
-            is OpenAiChatFromSettings.PrepareOutcome.PortInvalid ->
-                _userMessage.value = app.getString(R.string.test_feedback_port_invalid)
-            is OpenAiChatFromSettings.PrepareOutcome.BaseUrlInvalid ->
-                _userMessage.value = app.getString(R.string.chat_need_base_url)
-            is OpenAiChatFromSettings.PrepareOutcome.ApiKeyMissing ->
-                _userMessage.value = app.getString(R.string.chat_need_api_key)
-            is OpenAiChatFromSettings.PrepareOutcome.Ready -> {
-                val prepared = outcome.prepared
-                viewModelScope.launch {
+        viewModelScope.launch {
+            val prefs = settingsRepository.preferencesFlow.first()
+            when (val outcome = OpenAiChatFromSettings.prepareFromPreferences(prefs)) {
+                is OpenAiChatFromSettings.PrepareOutcome.PortInvalid ->
+                    _userMessage.value = app.getString(R.string.test_feedback_port_invalid)
+                is OpenAiChatFromSettings.PrepareOutcome.BaseUrlInvalid ->
+                    _userMessage.value = app.getString(R.string.chat_need_base_url)
+                is OpenAiChatFromSettings.PrepareOutcome.ApiKeyMissing ->
+                    _userMessage.value = app.getString(R.string.chat_need_api_key)
+                is OpenAiChatFromSettings.PrepareOutcome.Ready -> {
+                    val prepared = outcome.prepared
                     if (!app.hasActiveNetwork()) {
                         _userMessage.value = app.getString(R.string.test_feedback_network_unavailable)
                         return@launch

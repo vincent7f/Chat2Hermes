@@ -37,22 +37,21 @@ class SettingsViewModel(
         _userMessage.value = null
     }
 
-    fun save(
+    /** 必须 await 完成后再离开设置页，否则主界面会读到未落盘的旧 API Key。 */
+    suspend fun save(
         scheme: String,
         host: String,
         port: Int,
         apiKey: String,
         modelName: String,
     ) {
-        viewModelScope.launch {
-            repository.update(
-                scheme = scheme,
-                host = host,
-                port = port,
-                apiKey = apiKey,
-                modelName = modelName,
-            )
-        }
+        repository.update(
+            scheme = scheme,
+            host = host,
+            port = port,
+            apiKey = apiKey,
+            modelName = modelName,
+        )
     }
 
     fun testHaConnection(scheme: String, host: String, portText: String, apiKey: String) {
