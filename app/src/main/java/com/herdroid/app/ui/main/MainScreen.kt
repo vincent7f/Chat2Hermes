@@ -8,6 +8,7 @@ package com.herdroid.app.ui.main
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
@@ -24,6 +26,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -87,6 +90,7 @@ fun MainScreen(
     val chatMessages by viewModel.chatMessages.collectAsState()
     val prefs by viewModel.preferences.collectAsStateWithLifecycle(initialValue = UserPreferences.DEFAULT)
     val cdAutoPlayTts = stringResource(R.string.cd_auto_play_tts)
+    val cdChatNew = stringResource(R.string.cd_chat_new)
 
     val chatTimeFormatter = remember {
         SimpleDateFormat("HH:mm", Locale.getDefault()).apply {
@@ -128,15 +132,26 @@ fun MainScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.main_title)) },
+                title = {
+                    Text(
+                        text = stringResource(R.string.main_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
                 actions = {
+                    val actionScroll = rememberScrollState()
                     Row(
+                        modifier = Modifier.horizontalScroll(actionScroll),
                         verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         Text(
                             text = stringResource(R.string.read_aloud_reply_label),
-                            style = MaterialTheme.typography.labelLarge,
-                            modifier = Modifier.padding(end = 4.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            modifier = Modifier.padding(end = 2.dp),
                         )
                         Switch(
                             checked = prefs.autoPlayTts,
@@ -145,8 +160,28 @@ fun MainScreen(
                                 contentDescription = cdAutoPlayTts
                             },
                         )
-                        IconButton(onClick = onOpenSettings) {
-                            Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.cd_open_settings))
+                        IconButton(
+                            onClick = onOpenSettings,
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Icon(
+                                Icons.Filled.Settings,
+                                contentDescription = stringResource(R.string.cd_open_settings),
+                            )
+                        }
+                        TextButton(
+                            onClick = { viewModel.clearChat() },
+                            enabled = chatMessages.isNotEmpty(),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                            modifier = Modifier.semantics {
+                                contentDescription = cdChatNew
+                            },
+                        ) {
+                            Text(
+                                text = stringResource(R.string.chat_new_chat),
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                            )
                         }
                     }
                 },
@@ -211,17 +246,6 @@ fun MainScreen(
                             )
                         }
                     }
-                }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(
-                    onClick = { viewModel.clearChat() },
-                    enabled = chatMessages.isNotEmpty(),
-                ) {
-                    Text(stringResource(R.string.chat_clear))
                 }
             }
             Row(
