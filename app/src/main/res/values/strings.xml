@@ -15,6 +15,9 @@
     <string name="cd_send_chat">发送</string>
     <string name="chat_clear">清空对话</string>
     <string name="chat_streaming_placeholder">正在回复…</string>
+    <string name="chat_expand">展开</string>
+    <string name="chat_collapse">收起</string>
+    <string name="cd_assistant_reply_collapsed">助手回复已折叠，点按展开全文</string>
     <string name="chat_menu_read_aloud">朗读</string>
     <string name="chat_menu_resend">重发</string>
     <string name="chat_menu_copy">复制</string>

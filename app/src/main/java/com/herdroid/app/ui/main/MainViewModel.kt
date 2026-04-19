@@ -105,6 +105,7 @@ class MainViewModel(
                 id = ++chatMessageSeq,
                 role = ChatMessageRole.Assistant,
                 text = "",
+                replyComplete = false,
             )
             val assistantMsgId = assistantMsg.id
             _chatMessages.update { it + userMsg + assistantMsg }
@@ -118,7 +119,7 @@ class MainViewModel(
                     _chatMessages.update { list ->
                         list.map { m ->
                             if (m.id == assistantMsgId) {
-                                m.copy(text = m.text + delta)
+                                m.copy(text = m.text + delta, replyComplete = false)
                             } else {
                                 m
                             }
@@ -133,7 +134,7 @@ class MainViewModel(
                         list.map { m ->
                             when (m.id) {
                                 userMsgId -> m.copy(userSendState = UserMessageSendState.Sent)
-                                assistantMsgId -> m.copy(text = fullReply)
+                                assistantMsgId -> m.copy(text = fullReply, replyComplete = true)
                                 else -> m
                             }
                         }
@@ -156,7 +157,13 @@ class MainViewModel(
                         if (asst == null || asst.text.isBlank()) {
                             markedUser.filterNot { it.id == assistantMsgId }
                         } else {
-                            markedUser
+                            markedUser.map { m ->
+                                if (m.id == assistantMsgId) {
+                                    m.copy(replyComplete = true)
+                                } else {
+                                    m
+                                }
+                            }
                         }
                     }
                     _userMessage.value = app.getString(

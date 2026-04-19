@@ -1,5 +1,12 @@
+@file:OptIn(
+    ExperimentalFoundationApi::class,
+    ExperimentalMaterial3Api::class,
+)
+
 package com.herdroid.app.ui.main
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,6 +56,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalFocusManager
@@ -63,7 +71,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.herdroid.app.R
 import com.herdroid.app.data.settings.UserPreferences
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     viewModel: MainViewModel,
@@ -171,6 +178,7 @@ fun MainScreen(
                         ChatBubble(
                             message = msg,
                             showStreamingPlaceholder = showStreamingPlaceholder,
+                            autoPlayTts = prefs.autoPlayTts,
                             onReadAloud = { viewModel.readMessageAloud(msg.text) },
                             onResend = { viewModel.sendChatMessage(msg.text) },
                             onCopy = { viewModel.copyMessageToClipboard(msg.text) },
@@ -255,6 +263,7 @@ fun MainScreen(
 private fun ChatBubble(
     message: ChatUiMessage,
     showStreamingPlaceholder: Boolean = false,
+    autoPlayTts: Boolean = false,
     onReadAloud: () -> Unit,
     onResend: () -> Unit,
     onCopy: () -> Unit,
@@ -278,6 +287,8 @@ private fun ChatBubble(
                 MessageBubbleWithMenu(
                     message = message,
                     displayText = bodyText,
+                    showStreamingPlaceholder = showStreamingPlaceholder,
+                    assistantAutoFold = false,
                     menuExpanded = menuExpanded,
                     onMenuExpandedChange = { menuExpanded = it },
                     onReadAloud = onReadAloud,
@@ -292,6 +303,8 @@ private fun ChatBubble(
             MessageBubbleWithMenu(
                 message = message,
                 displayText = bodyText,
+                showStreamingPlaceholder = showStreamingPlaceholder,
+                assistantAutoFold = autoPlayTts,
                 menuExpanded = menuExpanded,
                 onMenuExpandedChange = { menuExpanded = it },
                 onReadAloud = onReadAloud,
@@ -307,6 +320,8 @@ private fun ChatBubble(
 private fun MessageBubbleWithMenu(
     message: ChatUiMessage,
     displayText: String,
+    showStreamingPlaceholder: Boolean,
+    assistantAutoFold: Boolean,
     menuExpanded: Boolean,
     onMenuExpandedChange: (Boolean) -> Unit,
     onReadAloud: () -> Unit,
@@ -314,6 +329,30 @@ private fun MessageBubbleWithMenu(
     onCopy: () -> Unit,
     isUser: Boolean,
 ) {
+    val shouldFold =
+        !isUser &&
+            assistantAutoFold &&
+            message.replyComplete &&
+            message.text.isNotEmpty() &&
+            !showStreamingPlaceholder
+
+    val cdAssistantCollapsed = stringResource(R.string.cd_assistant_reply_collapsed)
+
+    var replyExpanded by remember(message.id) { mutableStateOf(true) }
+    var didApplyInitialCollapse by remember(message.id) { mutableStateOf(false) }
+
+    LaunchedEffect(message.replyComplete, assistantAutoFold, message.id) {
+        if (isUser || !message.replyComplete) return@LaunchedEffect
+        if (!assistantAutoFold) {
+            replyExpanded = true
+            return@LaunchedEffect
+        }
+        if (!didApplyInitialCollapse) {
+            replyExpanded = false
+            didApplyInitialCollapse = true
+        }
+    }
+
     Box {
         Surface(
             shape = RoundedCornerShape(12.dp),
@@ -324,22 +363,74 @@ private fun MessageBubbleWithMenu(
             },
             modifier = Modifier
                 .widthIn(max = 320.dp)
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onLongPress = { onMenuExpandedChange(true) },
-                    )
-                },
+                .then(
+                    if (shouldFold) {
+                        Modifier.combinedClickable(
+                            onClick = {
+                                if (!replyExpanded) {
+                                    replyExpanded = true
+                                }
+                            },
+                            onLongClick = { onMenuExpandedChange(true) },
+                        )
+                    } else {
+                        Modifier.pointerInput(Unit) {
+                            detectTapGestures(
+                                onLongPress = { onMenuExpandedChange(true) },
+                            )
+                        }
+                    },
+                ),
         ) {
-            Text(
-                text = displayText,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (displayText != message.text) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
-                modifier = Modifier.padding(12.dp),
-            )
+            when {
+                shouldFold && !replyExpanded -> {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = message.text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.semantics {
+                                contentDescription = cdAssistantCollapsed
+                            },
+                        )
+                        TextButton(
+                            onClick = { replyExpanded = true },
+                            modifier = Modifier.align(Alignment.End),
+                        ) {
+                            Text(stringResource(R.string.chat_expand))
+                        }
+                    }
+                }
+                shouldFold && replyExpanded -> {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = message.text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        TextButton(
+                            onClick = { replyExpanded = false },
+                            modifier = Modifier.align(Alignment.End),
+                        ) {
+                            Text(stringResource(R.string.chat_collapse))
+                        }
+                    }
+                }
+                else -> {
+                    Text(
+                        text = displayText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (displayText != message.text) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        },
+                        modifier = Modifier.padding(12.dp),
+                    )
+                }
+            }
         }
         DropdownMenu(
             expanded = menuExpanded,
