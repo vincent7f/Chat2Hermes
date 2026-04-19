@@ -19,7 +19,6 @@
     <string name="chat_menu_resend">重发</string>
     <string name="chat_menu_copy">复制</string>
     <string name="clipboard_message_label">Herdroid 消息</string>
-    <string name="cd_message_send_sending">正在发送</string>
     <string name="cd_message_send_sent">发送成功</string>
     <string name="cd_message_send_failed">发送失败</string>
     <string name="no_message_yet">暂无消息</string>

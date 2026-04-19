@@ -60,9 +60,6 @@ class MainViewModel(
     private val _chatMessages = MutableStateFlow<List<ChatUiMessage>>(emptyList())
     val chatMessages: StateFlow<List<ChatUiMessage>> = _chatMessages.asStateFlow()
 
-    private val _chatLoading = MutableStateFlow(false)
-    val chatLoading: StateFlow<Boolean> = _chatLoading.asStateFlow()
-
     fun setAutoPlayTts(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setAutoPlayTts(enabled)
@@ -75,7 +72,7 @@ class MainViewModel(
 
     fun sendChatMessage(userText: String) {
         val trimmed = userText.trim()
-        if (trimmed.isEmpty() || _chatLoading.value) return
+        if (trimmed.isEmpty()) return
         val app = getApplication<Application>()
         viewModelScope.launch {
             val prefs = settingsRepository.preferencesFlow.first()
@@ -89,89 +86,85 @@ class MainViewModel(
                 _userMessage.value = app.getString(R.string.test_feedback_network_unavailable)
                 return@launch
             }
-            _chatLoading.value = true
-            try {
-                val userMsg = ChatUiMessage(
-                    id = ++chatMessageSeq,
-                    role = ChatMessageRole.User,
-                    text = trimmed,
-                    userSendState = UserMessageSendState.Sending,
-                )
-                val userMsgId = userMsg.id
-                val apiMessages = _chatMessages.value.map { m ->
-                    when (m.role) {
-                        ChatMessageRole.User -> "user" to m.text
-                        ChatMessageRole.Assistant -> "assistant" to m.text
-                    }
-                } + ("user" to trimmed)
 
-                val assistantMsg = ChatUiMessage(
-                    id = ++chatMessageSeq,
-                    role = ChatMessageRole.Assistant,
-                    text = "",
-                )
-                val assistantMsgId = assistantMsg.id
-                _chatMessages.update { it + userMsg + assistantMsg }
+            val userMsg = ChatUiMessage(
+                id = ++chatMessageSeq,
+                role = ChatMessageRole.User,
+                text = trimmed,
+                userSendState = UserMessageSendState.Sending,
+            )
+            val userMsgId = userMsg.id
+            val apiMessages = _chatMessages.value.map { m ->
+                when (m.role) {
+                    ChatMessageRole.User -> "user" to m.text
+                    ChatMessageRole.Assistant -> "assistant" to m.text
+                }
+            } + ("user" to trimmed)
 
-                val result = OpenAiChatFromSettings.executeCompletionsStreaming(
-                    chatClient,
-                    prepared,
-                    apiMessages,
-                ) { delta ->
-                    mainHandler.post {
-                        _chatMessages.update { list ->
-                            list.map { m ->
-                                if (m.id == assistantMsgId) {
-                                    m.copy(text = m.text + delta)
-                                } else {
-                                    m
-                                }
+            val assistantMsg = ChatUiMessage(
+                id = ++chatMessageSeq,
+                role = ChatMessageRole.Assistant,
+                text = "",
+            )
+            val assistantMsgId = assistantMsg.id
+            _chatMessages.update { it + userMsg + assistantMsg }
+
+            val result = OpenAiChatFromSettings.executeCompletionsStreaming(
+                chatClient,
+                prepared,
+                apiMessages,
+            ) { delta ->
+                mainHandler.post {
+                    _chatMessages.update { list ->
+                        list.map { m ->
+                            if (m.id == assistantMsgId) {
+                                m.copy(text = m.text + delta)
+                            } else {
+                                m
                             }
                         }
                     }
                 }
-
-                result.fold(
-                    onSuccess = { fullReply ->
-                        _chatMessages.update { list ->
-                            list.map { m ->
-                                when (m.id) {
-                                    userMsgId -> m.copy(userSendState = UserMessageSendState.Sent)
-                                    assistantMsgId -> m.copy(text = fullReply)
-                                    else -> m
-                                }
-                            }
-                        }
-                        val latestPrefs = settingsRepository.preferencesFlow.first()
-                        if (latestPrefs.autoPlayTts) {
-                            speakWithOptionalVolumeWarning(fullReply)
-                        }
-                    },
-                    onFailure = { t ->
-                        _chatMessages.update { list ->
-                            val markedUser = list.map { m ->
-                                if (m.id == userMsgId) {
-                                    m.copy(userSendState = UserMessageSendState.Failed)
-                                } else {
-                                    m
-                                }
-                            }
-                            val asst = markedUser.find { it.id == assistantMsgId }
-                            if (asst == null || asst.text.isBlank()) {
-                                markedUser.filterNot { it.id == assistantMsgId }
-                            } else {
-                                markedUser
-                            }
-                        }
-                        _userMessage.value = app.getString(
-                            R.string.chat_request_failed,
-                            t.message ?: t.javaClass.simpleName,
-                        )
-                    },
-                )
-            } finally {
-                _chatLoading.value = false
             }
+
+            result.fold(
+                onSuccess = { fullReply ->
+                    _chatMessages.update { list ->
+                        list.map { m ->
+                            when (m.id) {
+                                userMsgId -> m.copy(userSendState = UserMessageSendState.Sent)
+                                assistantMsgId -> m.copy(text = fullReply)
+                                else -> m
+                            }
+                        }
+                    }
+                    val latestPrefs = settingsRepository.preferencesFlow.first()
+                    if (latestPrefs.autoPlayTts) {
+                        speakWithOptionalVolumeWarning(fullReply)
+                    }
+                },
+                onFailure = { t ->
+                    _chatMessages.update { list ->
+                        val markedUser = list.map { m ->
+                            if (m.id == userMsgId) {
+                                m.copy(userSendState = UserMessageSendState.Failed)
+                            } else {
+                                m
+                            }
+                        }
+                        val asst = markedUser.find { it.id == assistantMsgId }
+                        if (asst == null || asst.text.isBlank()) {
+                            markedUser.filterNot { it.id == assistantMsgId }
+                        } else {
+                            markedUser
+                        }
+                    }
+                    _userMessage.value = app.getString(
+                        R.string.chat_request_failed,
+                        t.message ?: t.javaClass.simpleName,
+                    )
+                },
+            )
         }
     }
 

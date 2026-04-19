@@ -25,7 +25,6 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -74,7 +73,6 @@ fun MainScreen(
     val userMessage by viewModel.userMessage.collectAsState()
     val volumeWarning by viewModel.volumeWarning.collectAsStateWithLifecycle()
     val chatMessages by viewModel.chatMessages.collectAsState()
-    val chatLoading by viewModel.chatLoading.collectAsState()
     val prefs by viewModel.preferences.collectAsStateWithLifecycle(initialValue = UserPreferences.DEFAULT)
     val cdAutoPlayTts = stringResource(R.string.cd_auto_play_tts)
 
@@ -167,11 +165,9 @@ fun MainScreen(
                     itemsIndexed(
                         chatMessages,
                         key = { _, msg -> msg.id },
-                    ) { index, msg ->
-                        val showStreamingPlaceholder = chatLoading &&
-                            index == chatMessages.lastIndex &&
-                            msg.role == ChatMessageRole.Assistant &&
-                            msg.text.isEmpty()
+                    ) { _, msg ->
+                        val showStreamingPlaceholder =
+                            msg.role == ChatMessageRole.Assistant && msg.text.isEmpty()
                         ChatBubble(
                             message = msg,
                             showStreamingPlaceholder = showStreamingPlaceholder,
@@ -188,7 +184,7 @@ fun MainScreen(
             ) {
                 TextButton(
                     onClick = { viewModel.clearChat() },
-                    enabled = chatMessages.isNotEmpty() && !chatLoading,
+                    enabled = chatMessages.isNotEmpty(),
                 ) {
                     Text(stringResource(R.string.chat_clear))
                 }
@@ -202,14 +198,13 @@ fun MainScreen(
                     value = inputText,
                     onValueChange = { inputText = it },
                     modifier = Modifier.weight(1f),
-                    enabled = !chatLoading,
                     placeholder = { Text(stringResource(R.string.chat_input_hint)) },
                     minLines = 1,
                     maxLines = 4,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(
                         onSend = {
-                            if (inputText.isNotBlank() && !chatLoading) {
+                            if (inputText.isNotBlank()) {
                                 viewModel.sendChatMessage(inputText)
                                 inputText = ""
                                 focusManager.clearFocus()
@@ -217,26 +212,18 @@ fun MainScreen(
                         },
                     ),
                 )
-                if (chatLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .padding(4.dp)
-                            .size(40.dp),
+                IconButton(
+                    onClick = {
+                        viewModel.sendChatMessage(inputText)
+                        inputText = ""
+                        focusManager.clearFocus()
+                    },
+                    enabled = inputText.isNotBlank(),
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Send,
+                        contentDescription = stringResource(R.string.cd_send_chat),
                     )
-                } else {
-                    IconButton(
-                        onClick = {
-                            viewModel.sendChatMessage(inputText)
-                            inputText = ""
-                            focusManager.clearFocus()
-                        },
-                        enabled = inputText.isNotBlank(),
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Send,
-                            contentDescription = stringResource(R.string.cd_send_chat),
-                        )
-                    }
                 }
             }
         }
@@ -390,13 +377,10 @@ private fun MessageBubbleWithMenu(
 private fun UserSendStateIcon(state: UserMessageSendState?) {
     when (state) {
         UserMessageSendState.Sending -> {
-            val cdSending = stringResource(R.string.cd_message_send_sending)
-            CircularProgressIndicator(
+            Spacer(
                 modifier = Modifier
                     .padding(bottom = 2.dp)
-                    .size(16.dp)
-                    .semantics { contentDescription = cdSending },
-                strokeWidth = 2.dp,
+                    .size(18.dp),
             )
         }
         UserMessageSendState.Sent -> {
