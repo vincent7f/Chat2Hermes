@@ -442,10 +442,8 @@ private fun ChatBubble(
 ) {
     val isUser = message.role == ChatMessageRole.User
     val bodyText = when {
-        !isUser && message.text.isEmpty() && showStreamingPlaceholder ->
-            stringResource(R.string.chat_streaming_placeholder)
-        !isUser && !message.replyComplete && message.text.isNotEmpty() ->
-            "${collapsedPrefixPreview(message.text)} ${stringResource(R.string.chat_streaming_received_chars, message.text.length)}"
+        !isUser && !message.replyComplete ->
+            stringResource(R.string.chat_streaming_receiving, message.text.length)
         else -> message.text
     }
     var menuExpanded by remember(message.id) { mutableStateOf(false) }
@@ -640,8 +638,7 @@ private fun MessageBubbleWithMenu(
                     }
                 }
                 else -> {
-                    val streamingSingleLine =
-                        !isUser && !message.replyComplete && message.text.isNotEmpty()
+                    val streamingSingleLine = !isUser && !message.replyComplete
                     when {
                         !isUser && message.replyComplete && message.text.isNotEmpty() -> {
                             Column(modifier = Modifier.padding(12.dp)) {

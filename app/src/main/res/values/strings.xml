@@ -20,8 +20,7 @@
     <string name="cd_send_chat">发送</string>
     <string name="chat_new_chat">新对话</string>
     <string name="cd_chat_new">开始新对话，清空当前会话</string>
-    <string name="chat_streaming_placeholder">正在回复…</string>
-    <string name="chat_streaming_received_chars">已收 %1$d 字</string>
+    <string name="chat_streaming_receiving">【接收中】已经接收%1$d字符</string>
     <string name="chat_expand">展开</string>
     <string name="chat_collapse">收起</string>
     <string name="cd_chat_collapsed_row">已折叠，点按消息或点「展开」查看全文</string>
