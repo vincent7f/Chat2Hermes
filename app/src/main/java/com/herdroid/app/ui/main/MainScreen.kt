@@ -35,6 +35,8 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -56,11 +58,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalFocusManager
@@ -72,12 +77,14 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.core.view.ViewCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mikepenz.markdown.m3.Markdown
 import com.herdroid.app.R
 import com.herdroid.app.data.settings.UserPreferences
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreen(
@@ -87,6 +94,7 @@ fun MainScreen(
 ) {
     val userMessage by viewModel.userMessage.collectAsState()
     val volumeWarning by viewModel.volumeWarning.collectAsStateWithLifecycle()
+    val ttsLyric by viewModel.ttsLyric.collectAsStateWithLifecycle()
     val chatMessages by viewModel.chatMessages.collectAsState()
     val prefs by viewModel.preferences.collectAsStateWithLifecycle(initialValue = UserPreferences.DEFAULT)
     val cdAutoPlayTts = stringResource(R.string.cd_auto_play_tts)
@@ -101,6 +109,7 @@ fun MainScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+    val listScrollScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val rootView = LocalView.current
 
@@ -243,6 +252,11 @@ fun MainScreen(
                                 onReadAloud = { viewModel.readMessageAloud(msg.text) },
                                 onResend = { viewModel.sendChatMessage(msg.text) },
                                 onCopy = { viewModel.copyMessageToClipboard(msg.text) },
+                                onScrollToSelf = {
+                                    listScrollScope.launch {
+                                        listState.scrollToItem(index)
+                                    }
+                                },
                             )
                         }
                     }
@@ -307,7 +321,99 @@ fun MainScreen(
                 )
             }
         }
+
+        ttsLyric?.let { lyric ->
+            TtsLyricDialog(
+                state = lyric,
+                onPauseResume = {
+                    if (lyric.isPaused) viewModel.resumeTtsLyric() else viewModel.pauseTtsLyric()
+                },
+                onExit = { viewModel.dismissTtsLyric() },
+                modifier = Modifier.zIndex(2f),
+            )
+        }
     }
+}
+
+@Composable
+private fun TtsLyricDialog(
+    state: TtsLyricUiState,
+    onPauseResume: () -> Unit,
+    onExit: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Dialog(onDismissRequest = onExit) {
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ),
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.tts_lyric_title),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = state.previousLine,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = state.currentLine,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = state.nextLine,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = stringResource(
+                        R.string.tts_lyric_line_progress,
+                        state.lineIndex + 1,
+                        state.lineCount,
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TextButton(onClick = onPauseResume) {
+                        Text(
+                            text = if (state.isPaused) {
+                                stringResource(R.string.tts_lyric_resume)
+                            } else {
+                                stringResource(R.string.tts_lyric_pause)
+                            },
+                        )
+                    }
+                    TextButton(onClick = onExit) {
+                        Text(stringResource(R.string.tts_lyric_exit))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AssistantMarkdownBody(raw: String) {
+    Markdown(
+        content = raw,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
@@ -318,12 +424,15 @@ private fun ChatBubble(
     onReadAloud: () -> Unit,
     onResend: () -> Unit,
     onCopy: () -> Unit,
+    onScrollToSelf: () -> Unit,
 ) {
     val isUser = message.role == ChatMessageRole.User
-    val bodyText = if (!isUser && message.text.isEmpty() && showStreamingPlaceholder) {
-        stringResource(R.string.chat_streaming_placeholder)
-    } else {
-        message.text
+    val bodyText = when {
+        !isUser && message.text.isEmpty() && showStreamingPlaceholder ->
+            stringResource(R.string.chat_streaming_placeholder)
+        !isUser && !message.replyComplete && message.text.isNotEmpty() ->
+            "${collapsedPrefixPreview(message.text)} ${stringResource(R.string.chat_streaming_received_chars, message.text.length)}"
+        else -> message.text
     }
     var menuExpanded by remember(message.id) { mutableStateOf(false) }
     Row(
@@ -346,6 +455,7 @@ private fun ChatBubble(
                     onResend = onResend,
                     onCopy = onCopy,
                     isUser = true,
+                    onExpandTalk = null,
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 UserSendStateIcon(state = message.userSendState)
@@ -362,6 +472,7 @@ private fun ChatBubble(
                 onResend = onResend,
                 onCopy = onCopy,
                 isUser = false,
+                onExpandTalk = onScrollToSelf,
             )
         }
     }
@@ -379,6 +490,7 @@ private fun MessageBubbleWithMenu(
     onResend: () -> Unit,
     onCopy: () -> Unit,
     isUser: Boolean,
+    onExpandTalk: (() -> Unit)?,
 ) {
     val shouldFoldAssistant =
         !isUser &&
@@ -394,11 +506,10 @@ private fun MessageBubbleWithMenu(
 
     val shouldFold = shouldFoldAssistant || shouldFoldUser
 
-    val utf8ByteCount = remember(message.id, message.text) {
-        message.text.encodeToByteArray().size
+    val previewPrefix = remember(message.id, message.text) {
+        collapsedPrefixPreview(message.text)
     }
-    val cdAssistantCollapsed = stringResource(R.string.cd_assistant_reply_collapsed, utf8ByteCount)
-    val cdUserCollapsed = stringResource(R.string.cd_user_message_collapsed)
+    val cdCollapsed = stringResource(R.string.cd_chat_collapsed_row)
 
     var replyExpanded by remember(message.id) { mutableStateOf(true) }
     var didApplyInitialCollapse by remember(message.id) { mutableStateOf(false) }
@@ -463,33 +574,22 @@ private fun MessageBubbleWithMenu(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        if (isUser) {
-                            Text(
-                                text = message.text,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier
-                                    .weight(1f, fill = false)
-                                    .semantics {
-                                        contentDescription = cdUserCollapsed
-                                    },
-                            )
-                        } else {
-                            Text(
-                                text = stringResource(R.string.chat_reply_byte_count, utf8ByteCount),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier
-                                    .weight(1f, fill = false)
-                                    .semantics {
-                                        contentDescription = cdAssistantCollapsed
-                                    },
-                            )
-                        }
+                        Text(
+                            text = previewPrefix,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isUser) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .semantics {
+                                    contentDescription = cdCollapsed
+                                },
+                        )
                         TextButton(
                             onClick = { replyExpanded = true },
                             contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
@@ -504,15 +604,19 @@ private fun MessageBubbleWithMenu(
                 }
                 shouldFold && replyExpanded -> {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = message.text,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (isUser) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            },
-                        )
+                        if (!isUser && message.replyComplete) {
+                            AssistantMarkdownBody(message.text)
+                        } else {
+                            Text(
+                                text = message.text,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (isUser) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                            )
+                        }
                         TextButton(
                             onClick = { replyExpanded = false },
                             modifier = Modifier.align(Alignment.End),
@@ -522,16 +626,33 @@ private fun MessageBubbleWithMenu(
                     }
                 }
                 else -> {
-                    Text(
-                        text = displayText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (displayText != message.text) {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
-                        },
-                        modifier = Modifier.padding(12.dp),
-                    )
+                    val streamingSingleLine =
+                        !isUser && !message.replyComplete && message.text.isNotEmpty()
+                    when {
+                        !isUser && message.replyComplete && message.text.isNotEmpty() -> {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                AssistantMarkdownBody(message.text)
+                            }
+                        }
+                        else -> {
+                            Text(
+                                text = displayText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (displayText != message.text) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                                maxLines = if (streamingSingleLine) 1 else Int.MAX_VALUE,
+                                overflow = if (streamingSingleLine) {
+                                    TextOverflow.Ellipsis
+                                } else {
+                                    TextOverflow.Clip
+                                },
+                                modifier = Modifier.padding(12.dp),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -555,6 +676,14 @@ private fun MessageBubbleWithMenu(
                     },
                 )
             } else {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.chat_menu_expand_talk)) },
+                    onClick = {
+                        onMenuExpandedChange(false)
+                        replyExpanded = true
+                        onExpandTalk?.invoke()
+                    },
+                )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.chat_menu_copy)) },
                     onClick = {

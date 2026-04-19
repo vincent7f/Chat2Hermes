@@ -15,6 +15,8 @@ import com.herdroid.app.data.settings.SettingsRepository
 import com.herdroid.app.data.settings.UserPreferences
 import com.herdroid.app.domain.MediaVolumeChecker
 import com.herdroid.app.domain.hasActiveNetwork
+import com.herdroid.app.domain.tts.LyricLineWindow
+import com.herdroid.app.domain.tts.LyricPlaybackCallback
 import com.herdroid.app.domain.tts.SystemTtsSpeaker
 import com.herdroid.app.ui.hermes.errorMessage
 import kotlinx.coroutines.Job
@@ -52,6 +54,10 @@ class MainViewModel(
     /** 朗读前音量过低时在主界面展示的浮窗文案；约 5 秒后由 [dismissVolumeWarningAfterDelay] 清除。 */
     private val _volumeWarning = MutableStateFlow<String?>(null)
     val volumeWarning: StateFlow<String?> = _volumeWarning.asStateFlow()
+
+    /** 歌词式朗读弹窗；`null` 表示未显示。 */
+    private val _ttsLyric = MutableStateFlow<TtsLyricUiState?>(null)
+    val ttsLyric: StateFlow<TtsLyricUiState?> = _ttsLyric.asStateFlow()
 
     private var volumeWarningDismissJob: Job? = null
 
@@ -198,7 +204,44 @@ class MainViewModel(
             volumeWarningDismissJob?.cancel()
             _volumeWarning.value = null
         }
-        ttsSpeaker.speak(plainText)
+        ttsSpeaker.speakWithLyrics(
+            plainText,
+            object : LyricPlaybackCallback {
+                override fun onLineWindow(window: LyricLineWindow) {
+                    _ttsLyric.value = TtsLyricUiState(
+                        previousLine = window.previous,
+                        currentLine = window.current,
+                        nextLine = window.next,
+                        lineIndex = window.index,
+                        lineCount = window.total,
+                        isPaused = false,
+                    )
+                }
+
+                override fun onComplete() {
+                    _ttsLyric.value = null
+                }
+
+                override fun onError(message: String) {
+                    _ttsLyric.value = null
+                }
+            },
+        )
+    }
+
+    fun pauseTtsLyric() {
+        ttsSpeaker.pauseLyricPlayback()
+        _ttsLyric.update { it?.copy(isPaused = true) }
+    }
+
+    fun resumeTtsLyric() {
+        ttsSpeaker.resumeLyricPlayback()
+        _ttsLyric.update { it?.copy(isPaused = false) }
+    }
+
+    fun dismissTtsLyric() {
+        ttsSpeaker.stopLyricPlayback()
+        _ttsLyric.value = null
     }
 
     private fun showVolumeWarning(message: String) {
@@ -224,3 +267,12 @@ class MainViewModel(
         private const val VOLUME_WARNING_MS = 5_000L
     }
 }
+
+data class TtsLyricUiState(
+    val previousLine: String,
+    val currentLine: String,
+    val nextLine: String,
+    val lineIndex: Int,
+    val lineCount: Int,
+    val isPaused: Boolean,
+)

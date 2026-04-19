@@ -1,5 +1,17 @@
 package com.herdroid.app.ui.main
 
+/** 折叠行展示：取正文开头若干字符 + 省略号，与收发消息共用。 */
+object ChatUiStyle {
+    const val COLLAPSED_PREFIX_CHARS = 12
+}
+
+/** 单行折叠预览：至多 [maxChars] 个字符，超出加 `…`。 */
+fun collapsedPrefixPreview(text: String, maxChars: Int = ChatUiStyle.COLLAPSED_PREFIX_CHARS): String {
+    val t = text.trim()
+    if (t.isEmpty()) return ""
+    return if (t.length <= maxChars) t else t.take(maxChars) + "…"
+}
+
 /** 与上一条消息间隔不小于此时长（毫秒）才单独显示时间行。 */
 const val CHAT_TIMESTAMP_GAP_MS = 60_000L
 

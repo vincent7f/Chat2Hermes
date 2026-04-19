@@ -57,6 +57,8 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.markdownRendererAndroid)
+    implementation(libs.markdownRendererM3)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
 
