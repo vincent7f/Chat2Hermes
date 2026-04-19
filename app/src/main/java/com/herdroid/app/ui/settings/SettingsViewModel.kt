@@ -110,11 +110,11 @@ class SettingsViewModel(
         }
     }
 
-    /** 使用当前填写的基址、API Key、模型，发送默认内容「hi」测试 /v1/chat/completions。 */
+    /** 仅调用 /v1/chat/completions，不涉及 TTS。 */
     fun testChatCompletion(networkBaseUrl: String, apiKey: String, model: String) {
         val root = networkBaseUrl.trim()
         if (root.isEmpty()) {
-            _userMessage.value = appCtx.getString(R.string.test_feedback_tts_url_empty)
+            _userMessage.value = appCtx.getString(R.string.chat_need_base_url)
             return
         }
         if (apiKey.isBlank()) {
