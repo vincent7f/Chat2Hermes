@@ -9,7 +9,7 @@ import com.herdroid.app.data.chat.OpenAiChatFromSettings
 import com.herdroid.app.data.settings.SettingsRepository
 import com.herdroid.app.data.settings.UserPreferences
 import com.herdroid.app.domain.hasActiveNetwork
-import kotlinx.coroutines.Dispatchers
+import com.herdroid.app.ui.hermes.errorMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,9 +18,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
-/** 主界面 OpenAI 兼容对话；发送前对 preferencesFlow 取 first()，保证使用已落盘的 API Key 等设置。 */
+/** 主界面 Hermes 对话：与设置页「测试对话」相同管线（[OpenAiChatFromSettings] + [executeCompletions]）。 */
 class MainViewModel(
     application: Application,
     private val settingsRepository: SettingsRepository,
@@ -55,60 +54,57 @@ class MainViewModel(
         val app = getApplication<Application>()
         viewModelScope.launch {
             val prefs = settingsRepository.preferencesFlow.first()
-            when (val outcome = OpenAiChatFromSettings.prepareFromPreferences(prefs)) {
-                is OpenAiChatFromSettings.PrepareOutcome.PortInvalid ->
-                    _userMessage.value = app.getString(R.string.test_feedback_port_invalid)
-                is OpenAiChatFromSettings.PrepareOutcome.BaseUrlInvalid ->
-                    _userMessage.value = app.getString(R.string.chat_need_base_url)
-                is OpenAiChatFromSettings.PrepareOutcome.ApiKeyMissing ->
-                    _userMessage.value = app.getString(R.string.chat_need_api_key)
-                is OpenAiChatFromSettings.PrepareOutcome.Ready -> {
-                    val prepared = outcome.prepared
-                    if (!app.hasActiveNetwork()) {
-                        _userMessage.value = app.getString(R.string.test_feedback_network_unavailable)
-                        return@launch
-                    }
-                    _chatLoading.value = true
-                    try {
-                        val userMsg = ChatUiMessage(
-                            id = ++chatMessageSeq,
-                            role = ChatMessageRole.User,
-                            text = trimmed,
-                        )
-                        _chatMessages.update { it + userMsg }
+            val outcome = OpenAiChatFromSettings.prepareFromPreferences(prefs)
+            outcome.errorMessage(app)?.let {
+                _userMessage.value = it
+                return@launch
+            }
+            val prepared = (outcome as OpenAiChatFromSettings.PrepareOutcome.Ready).prepared
+            if (!app.hasActiveNetwork()) {
+                _userMessage.value = app.getString(R.string.test_feedback_network_unavailable)
+                return@launch
+            }
+            _chatLoading.value = true
+            try {
+                val userMsg = ChatUiMessage(
+                    id = ++chatMessageSeq,
+                    role = ChatMessageRole.User,
+                    text = trimmed,
+                )
+                _chatMessages.update { it + userMsg }
 
-                        val apiMessages = _chatMessages.value.map { m ->
-                            when (m.role) {
-                                ChatMessageRole.User -> "user" to m.text
-                                ChatMessageRole.Assistant -> "assistant" to m.text
-                            }
-                        }
-
-                        val result = withContext(Dispatchers.IO) {
-                            OpenAiChatFromSettings.complete(chatClient, prepared, apiMessages)
-                        }
-
-                        result.fold(
-                            onSuccess = { reply ->
-                                _chatMessages.update {
-                                    it + ChatUiMessage(
-                                        id = ++chatMessageSeq,
-                                        role = ChatMessageRole.Assistant,
-                                        text = reply,
-                                    )
-                                }
-                            },
-                            onFailure = { t ->
-                                _userMessage.value = app.getString(
-                                    R.string.chat_request_failed,
-                                    t.message ?: t.javaClass.simpleName,
-                                )
-                            },
-                        )
-                    } finally {
-                        _chatLoading.value = false
+                val apiMessages = _chatMessages.value.map { m ->
+                    when (m.role) {
+                        ChatMessageRole.User -> "user" to m.text
+                        ChatMessageRole.Assistant -> "assistant" to m.text
                     }
                 }
+
+                val result = OpenAiChatFromSettings.executeCompletions(
+                    chatClient,
+                    prepared,
+                    apiMessages,
+                )
+
+                result.fold(
+                    onSuccess = { reply ->
+                        _chatMessages.update {
+                            it + ChatUiMessage(
+                                id = ++chatMessageSeq,
+                                role = ChatMessageRole.Assistant,
+                                text = reply,
+                            )
+                        }
+                    },
+                    onFailure = { t ->
+                        _userMessage.value = app.getString(
+                            R.string.chat_request_failed,
+                            t.message ?: t.javaClass.simpleName,
+                        )
+                    },
+                )
+            } finally {
+                _chatLoading.value = false
             }
         }
     }

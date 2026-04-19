@@ -2,9 +2,11 @@ package com.herdroid.app.data.chat
 
 import com.herdroid.app.data.settings.UserPreferences
 import com.herdroid.app.domain.HealthCheckUrlFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
- * 主界面对话与设置页「测试对话」共用：由协议、地址、端口拼根地址，再调用 [OpenAiChatClient.chatCompletions]。
+ * 主界面与设置页与 Hermes 的 OpenAI 兼容对话共用：同一套根 URL（[HealthCheckUrlFactory.buildHttpOrigin]）与 [OpenAiChatClient.chatCompletions]。
  */
 object OpenAiChatFromSettings {
 
@@ -30,6 +32,7 @@ object OpenAiChatFromSettings {
             model = prefs.modelName,
         )
 
+    /** 与 [prepareFromPreferences] 等价：先解析端口再拼 URL，供设置页表单与 [UserPreferences] 对齐。 */
     fun prepareFromPortText(
         scheme: String,
         host: String,
@@ -69,4 +72,13 @@ object OpenAiChatFromSettings {
         model = prepared.model,
         messages = messages,
     )
+
+    /** 与设置页「测试对话」、主界面发消息共用：在 IO 线程执行 [complete]。 */
+    suspend fun executeCompletions(
+        client: OpenAiChatClient,
+        prepared: Prepared,
+        messages: List<Pair<String, String>>,
+    ): Result<String> = withContext(Dispatchers.IO) {
+        complete(client, prepared, messages)
+    }
 }

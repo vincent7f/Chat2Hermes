@@ -13,6 +13,7 @@ import com.herdroid.app.data.settings.SettingsRepository
 import com.herdroid.app.domain.HaConnectionTester
 import com.herdroid.app.domain.HealthCheckUrlFactory
 import com.herdroid.app.domain.hasActiveNetwork
+import com.herdroid.app.ui.hermes.errorMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +27,7 @@ class SettingsViewModel(
     private val app: HerdroidApplication,
 ) : AndroidViewModel(application) {
 
-    private val chatClient = OpenAiChatClient(app.okHttpClient)
+    private val chatClient = app.openAiChatClient
 
     private val _userMessage = MutableStateFlow<String?>(null)
     val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
@@ -93,42 +94,36 @@ class SettingsViewModel(
         }
     }
 
+    /** 与主界面发消息相同：同一套 URL（[OpenAiChatFromSettings]）与 [executeCompletions]。 */
     fun testChatCompletion(scheme: String, host: String, portText: String, apiKey: String, model: String) {
-        when (val outcome = OpenAiChatFromSettings.prepareFromPortText(scheme, host, portText, apiKey, model)) {
-            is OpenAiChatFromSettings.PrepareOutcome.PortInvalid ->
-                _userMessage.value = appCtx.getString(R.string.test_feedback_port_invalid)
-            is OpenAiChatFromSettings.PrepareOutcome.BaseUrlInvalid ->
-                _userMessage.value = appCtx.getString(R.string.chat_need_base_url)
-            is OpenAiChatFromSettings.PrepareOutcome.ApiKeyMissing ->
-                _userMessage.value = appCtx.getString(R.string.chat_need_api_key)
-            is OpenAiChatFromSettings.PrepareOutcome.Ready -> {
-                val prepared = outcome.prepared
-                viewModelScope.launch {
-                    if (!appCtx.hasActiveNetwork()) {
-                        _userMessage.value = appCtx.getString(R.string.test_feedback_network_unavailable)
-                        return@launch
-                    }
-                    _userMessage.value = appCtx.getString(R.string.test_chat_testing)
-                    val result = withContext(Dispatchers.IO) {
-                        OpenAiChatFromSettings.complete(
-                            chatClient,
-                            prepared,
-                            listOf("user" to DEFAULT_TEST_CHAT_PROMPT),
-                        )
-                    }
-                    _userMessage.value = result.fold(
-                        onSuccess = { reply ->
-                            appCtx.getString(R.string.test_chat_ok, reply)
-                        },
-                        onFailure = { t ->
-                            appCtx.getString(
-                                R.string.test_chat_fail,
-                                t.message ?: t.javaClass.simpleName,
-                            )
-                        },
-                    )
-                }
+        viewModelScope.launch {
+            val outcome = OpenAiChatFromSettings.prepareFromPortText(scheme, host, portText, apiKey, model)
+            outcome.errorMessage(appCtx)?.let {
+                _userMessage.value = it
+                return@launch
             }
+            val prepared = (outcome as OpenAiChatFromSettings.PrepareOutcome.Ready).prepared
+            if (!appCtx.hasActiveNetwork()) {
+                _userMessage.value = appCtx.getString(R.string.test_feedback_network_unavailable)
+                return@launch
+            }
+            _userMessage.value = appCtx.getString(R.string.test_chat_testing)
+            val result = OpenAiChatFromSettings.executeCompletions(
+                chatClient,
+                prepared,
+                listOf("user" to DEFAULT_TEST_CHAT_PROMPT),
+            )
+            _userMessage.value = result.fold(
+                onSuccess = { reply ->
+                    appCtx.getString(R.string.test_chat_ok, reply)
+                },
+                onFailure = { t ->
+                    appCtx.getString(
+                        R.string.test_chat_fail,
+                        t.message ?: t.javaClass.simpleName,
+                    )
+                },
+            )
         }
     }
 

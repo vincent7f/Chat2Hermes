@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.herdroid.app.HerdroidApplication
-import com.herdroid.app.data.chat.OpenAiChatClient
 
 class MainViewModelFactory(
     private val application: Application,
@@ -16,7 +15,7 @@ class MainViewModelFactory(
             return MainViewModel(
                 application,
                 app.settingsRepository,
-                OpenAiChatClient(app.okHttpClient),
+                app.openAiChatClient,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel: ${modelClass.name}")
