@@ -17,11 +17,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -30,7 +27,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -48,7 +44,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.herdroid.app.R
-import com.herdroid.app.data.ha.HaConnectionState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,9 +52,6 @@ fun MainScreen(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val connectionState by viewModel.connectionState.collectAsState()
-    val lastMessage by viewModel.lastMessage.collectAsState()
-    val preferences by viewModel.preferences.collectAsState()
     val userMessage by viewModel.userMessage.collectAsState()
     val chatMessages by viewModel.chatMessages.collectAsState()
     val chatLoading by viewModel.chatLoading.collectAsState()
@@ -106,21 +98,14 @@ fun MainScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.Start,
         ) {
-            ConnectionStatusChip(connectionState)
-            Text(
-                text = stringResource(R.string.push_message_label),
-                style = MaterialTheme.typography.labelLarge,
-            )
-            Text(
-                text = lastMessage.ifEmpty { stringResource(R.string.no_message_yet) },
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.fillMaxWidth(),
-                maxLines = 3,
-            )
-            HorizontalDivider()
             Text(
                 text = stringResource(R.string.chat_section_title),
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = stringResource(R.string.chat_section_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             LazyColumn(
                 state = listState,
@@ -200,23 +185,6 @@ fun MainScreen(
                     }
                 }
             }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.auto_tts))
-                Switch(
-                    checked = preferences.autoPlayTts,
-                    onCheckedChange = { viewModel.setAutoPlay(it) },
-                )
-            }
-            Button(
-                onClick = { viewModel.reconnect() },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.reconnect))
-            }
         }
     }
 }
@@ -244,20 +212,4 @@ private fun ChatBubble(message: ChatUiMessage) {
             )
         }
     }
-}
-
-@Composable
-private fun ConnectionStatusChip(state: HaConnectionState) {
-    val (label, enabled) = when (state) {
-        HaConnectionState.Disconnected -> stringResource(R.string.status_disconnected) to false
-        HaConnectionState.Connecting -> stringResource(R.string.status_connecting) to false
-        HaConnectionState.Connected -> stringResource(R.string.status_connected) to true
-        is HaConnectionState.Error -> stringResource(R.string.status_error, state.message) to false
-    }
-    FilterChip(
-        selected = enabled,
-        onClick = {},
-        enabled = false,
-        label = { Text(label) },
-    )
 }

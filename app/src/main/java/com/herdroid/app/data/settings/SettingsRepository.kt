@@ -66,7 +66,7 @@ class SettingsRepository(private val context: Context) {
             autoPlayTts = this[Keys.AUTO_PLAY_TTS] ?: false,
             ttsEngine = engine,
             networkTtsBaseUrl = this[Keys.NETWORK_TTS_BASE] ?: "http://192.168.3.112:8642",
-            networkTtsApiKey = this[Keys.NETWORK_TTS_API_KEY] ?: "",
+            networkTtsApiKey = this[Keys.NETWORK_TTS_API_KEY] ?: "myapiky",
             networkTtsModel = this[Keys.NETWORK_TTS_MODEL] ?: "hermes-agent",
         )
     }

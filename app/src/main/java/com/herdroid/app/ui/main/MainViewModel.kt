@@ -5,36 +5,25 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.herdroid.app.R
 import com.herdroid.app.data.chat.OpenAiChatClient
-import com.herdroid.app.data.ha.HaClient
 import com.herdroid.app.data.settings.SettingsRepository
 import com.herdroid.app.data.settings.UserPreferences
-import com.herdroid.app.domain.WebSocketUrlFactory
 import com.herdroid.app.domain.tts.TtsManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-data class ConnectionParams(
-    val scheme: String,
-    val host: String,
-    val port: Int,
-    /** Hermes Agent API Key（与设置中 API Key 同一项）。 */
-    val bearerToken: String,
-)
-
+/**
+ * 主界面仅负责 **OpenAI 兼容** `POST /v1/chat/completions` 对话；API 基址、Bearer Key、模型名来自设置。
+ */
 class MainViewModel(
     application: Application,
     private val settingsRepository: SettingsRepository,
-    private val haClient: HaClient,
     private val ttsManager: TtsManager,
     private val chatClient: OpenAiChatClient,
 ) : AndroidViewModel(application) {
@@ -46,11 +35,6 @@ class MainViewModel(
             UserPreferences.DEFAULT,
         )
 
-    val connectionState = haClient.connectionState
-
-    private val _lastMessage = MutableStateFlow("")
-    val lastMessage: StateFlow<String> = _lastMessage.asStateFlow()
-
     private val _userMessage = MutableStateFlow<String?>(null)
     val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
 
@@ -61,61 +45,6 @@ class MainViewModel(
 
     private val _chatLoading = MutableStateFlow(false)
     val chatLoading: StateFlow<Boolean> = _chatLoading.asStateFlow()
-
-    init {
-        viewModelScope.launch {
-            settingsRepository.preferencesFlow
-                .map {
-                    ConnectionParams(
-                        scheme = it.scheme,
-                        host = it.host,
-                        port = it.port,
-                        bearerToken = it.networkTtsApiKey,
-                    )
-                }
-                .distinctUntilChanged()
-                .collectLatest { params ->
-                    haClient.disconnect()
-                    val url = WebSocketUrlFactory.build(params.scheme, params.host, params.port)
-                    if (url != null) {
-                        haClient.connect(url, params.bearerToken)
-                    }
-                }
-        }
-        viewModelScope.launch {
-            haClient.messages.collect { msg ->
-                _lastMessage.value = msg
-                val prefs = preferences.value
-                if (prefs.autoPlayTts) {
-                    ttsManager.speak(
-                        rawText = msg,
-                        engine = prefs.ttsEngine,
-                        networkBaseUrl = prefs.networkTtsBaseUrl,
-                        networkApiKey = prefs.networkTtsApiKey,
-                        networkModel = prefs.networkTtsModel,
-                        onNetworkError = { err -> _userMessage.value = err },
-                    )
-                }
-            }
-        }
-    }
-
-    fun setAutoPlay(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setAutoPlayTts(enabled)
-        }
-    }
-
-    fun reconnect() {
-        viewModelScope.launch {
-            val p = preferences.value
-            haClient.disconnect()
-            val url = WebSocketUrlFactory.build(p.scheme, p.host, p.port)
-            if (url != null) {
-                haClient.connect(url, p.networkTtsApiKey)
-            }
-        }
-    }
 
     fun clearChat() {
         _chatMessages.value = emptyList()
@@ -196,9 +125,5 @@ class MainViewModel(
 
     fun clearUserMessage() {
         _userMessage.value = null
-    }
-
-    override fun onCleared() {
-        super.onCleared()
     }
 }

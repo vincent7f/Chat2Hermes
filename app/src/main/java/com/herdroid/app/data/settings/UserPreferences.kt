@@ -17,7 +17,7 @@ data class UserPreferences(
     val networkTtsModel: String,
 ) {
     companion object {
-        /** 与 Hermes 默认 LAN 服务一致；需提供 API Key（DataStore 中可为空，由用户在设置中填写）。 */
+        /** 默认与局域网 Hermes 测试环境一致（可在设置中修改）。 */
         val DEFAULT = UserPreferences(
             scheme = "http",
             host = "192.168.3.112",
@@ -25,7 +25,7 @@ data class UserPreferences(
             autoPlayTts = false,
             ttsEngine = TtsEngineType.SYSTEM,
             networkTtsBaseUrl = "http://192.168.3.112:8642",
-            networkTtsApiKey = "",
+            networkTtsApiKey = "myapiky",
             networkTtsModel = "hermes-agent",
         )
     }
