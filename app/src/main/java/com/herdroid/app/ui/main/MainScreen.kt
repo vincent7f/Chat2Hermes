@@ -387,7 +387,10 @@ private fun MessageBubbleWithMenu(
             message.text.isNotEmpty() &&
             !showStreamingPlaceholder
 
-    val cdAssistantCollapsed = stringResource(R.string.cd_assistant_reply_collapsed)
+    val utf8ByteCount = remember(message.id, message.text) {
+        message.text.encodeToByteArray().size
+    }
+    val cdAssistantCollapsed = stringResource(R.string.cd_assistant_reply_collapsed, utf8ByteCount)
 
     var replyExpanded by remember(message.id) { mutableStateOf(true) }
     var didApplyInitialCollapse by remember(message.id) { mutableStateOf(false) }
@@ -435,22 +438,32 @@ private fun MessageBubbleWithMenu(
         ) {
             when {
                 shouldFold && !replyExpanded -> {
-                    Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
                         Text(
-                            text = message.text,
+                            text = stringResource(R.string.chat_reply_byte_count, utf8ByteCount),
                             style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.semantics {
-                                contentDescription = cdAssistantCollapsed
-                            },
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .semantics {
+                                    contentDescription = cdAssistantCollapsed
+                                },
                         )
                         TextButton(
                             onClick = { replyExpanded = true },
-                            modifier = Modifier.align(Alignment.End),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
                         ) {
-                            Text(stringResource(R.string.chat_expand))
+                            Text(
+                                text = stringResource(R.string.chat_expand),
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1,
+                            )
                         }
                     }
                 }
