@@ -91,7 +91,9 @@ class MainViewModel(
                     id = ++chatMessageSeq,
                     role = ChatMessageRole.User,
                     text = trimmed,
+                    userSendState = UserMessageSendState.Sending,
                 )
+                val userMsgId = userMsg.id
                 _chatMessages.update { it + userMsg }
 
                 val apiMessages = _chatMessages.value.map { m ->
@@ -109,8 +111,15 @@ class MainViewModel(
 
                 result.fold(
                     onSuccess = { reply ->
-                        _chatMessages.update {
-                            it + ChatUiMessage(
+                        _chatMessages.update { list ->
+                            val marked = list.map { m ->
+                                if (m.id == userMsgId) {
+                                    m.copy(userSendState = UserMessageSendState.Sent)
+                                } else {
+                                    m
+                                }
+                            }
+                            marked + ChatUiMessage(
                                 id = ++chatMessageSeq,
                                 role = ChatMessageRole.Assistant,
                                 text = reply,
@@ -122,6 +131,15 @@ class MainViewModel(
                         }
                     },
                     onFailure = { t ->
+                        _chatMessages.update { list ->
+                            list.map { m ->
+                                if (m.id == userMsgId) {
+                                    m.copy(userSendState = UserMessageSendState.Failed)
+                                } else {
+                                    m
+                                }
+                            }
+                        }
                         _userMessage.value = app.getString(
                             R.string.chat_request_failed,
                             t.message ?: t.javaClass.simpleName,

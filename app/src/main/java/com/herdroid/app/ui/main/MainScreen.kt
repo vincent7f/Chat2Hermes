@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,6 +22,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -261,57 +265,134 @@ private fun ChatBubble(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
     ) {
-        Box {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = if (isUser) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
-                },
-                modifier = Modifier
-                    .widthIn(max = 320.dp)
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onLongPress = { menuExpanded = true },
-                        )
-                    },
+        if (isUser) {
+            Row(
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.End,
             ) {
-                Text(
-                    text = message.text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(12.dp),
+                MessageBubbleWithMenu(
+                    message = message,
+                    menuExpanded = menuExpanded,
+                    onMenuExpandedChange = { menuExpanded = it },
+                    onReadAloud = onReadAloud,
+                    onResend = onResend,
+                    onCopy = onCopy,
+                    isUser = true,
                 )
+                Spacer(modifier = Modifier.width(4.dp))
+                UserSendStateIcon(state = message.userSendState)
             }
-            DropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false },
-            ) {
+        } else {
+            MessageBubbleWithMenu(
+                message = message,
+                menuExpanded = menuExpanded,
+                onMenuExpandedChange = { menuExpanded = it },
+                onReadAloud = onReadAloud,
+                onResend = onResend,
+                onCopy = onCopy,
+                isUser = false,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MessageBubbleWithMenu(
+    message: ChatUiMessage,
+    menuExpanded: Boolean,
+    onMenuExpandedChange: (Boolean) -> Unit,
+    onReadAloud: () -> Unit,
+    onResend: () -> Unit,
+    onCopy: () -> Unit,
+    isUser: Boolean,
+) {
+    Box {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = if (isUser) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            },
+            modifier = Modifier
+                .widthIn(max = 320.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onLongPress = { onMenuExpandedChange(true) },
+                    )
+                },
+        ) {
+            Text(
+                text = message.text,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(12.dp),
+            )
+        }
+        DropdownMenu(
+            expanded = menuExpanded,
+            onDismissRequest = { onMenuExpandedChange(false) },
+        ) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.chat_menu_read_aloud)) },
+                onClick = {
+                    onMenuExpandedChange(false)
+                    onReadAloud()
+                },
+            )
+            if (isUser) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.chat_menu_read_aloud)) },
+                    text = { Text(stringResource(R.string.chat_menu_resend)) },
                     onClick = {
-                        menuExpanded = false
-                        onReadAloud()
+                        onMenuExpandedChange(false)
+                        onResend()
                     },
                 )
-                if (isUser) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.chat_menu_resend)) },
-                        onClick = {
-                            menuExpanded = false
-                            onResend()
-                        },
-                    )
-                } else {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.chat_menu_copy)) },
-                        onClick = {
-                            menuExpanded = false
-                            onCopy()
-                        },
-                    )
-                }
+            } else {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.chat_menu_copy)) },
+                    onClick = {
+                        onMenuExpandedChange(false)
+                        onCopy()
+                    },
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun UserSendStateIcon(state: UserMessageSendState?) {
+    when (state) {
+        UserMessageSendState.Sending -> {
+            val cdSending = stringResource(R.string.cd_message_send_sending)
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .padding(bottom = 2.dp)
+                    .size(16.dp)
+                    .semantics { contentDescription = cdSending },
+                strokeWidth = 2.dp,
+            )
+        }
+        UserMessageSendState.Sent -> {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = stringResource(R.string.cd_message_send_sent),
+                modifier = Modifier
+                    .padding(bottom = 2.dp)
+                    .size(18.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
+        UserMessageSendState.Failed -> {
+            Icon(
+                imageVector = Icons.Filled.Close,
+                contentDescription = stringResource(R.string.cd_message_send_failed),
+                modifier = Modifier
+                    .padding(bottom = 2.dp)
+                    .size(18.dp),
+                tint = MaterialTheme.colorScheme.error,
+            )
+        }
+        null -> {}
     }
 }
