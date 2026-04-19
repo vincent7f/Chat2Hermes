@@ -31,6 +31,11 @@
     <string name="network_tts_base">网络 TTS 基础 URL</string>
     <string name="network_tts_model">模型名称</string>
     <string name="hint_network_tts_model">hermes-agent</string>
+    <string name="test_chat">测试对话</string>
+    <string name="test_chat_hint">将使用当前「网络 TTS 基础 URL」、API Key 与模型名，向 /v1/chat/completions 发送默认内容「hi」。</string>
+    <string name="test_chat_testing">正在测试对话…</string>
+    <string name="test_chat_ok">对话测试成功，回复：%1$s</string>
+    <string name="test_chat_fail">对话测试失败：%1$s</string>
     <string name="save">保存</string>
     <string name="cd_scheme_dropdown">选择访问协议</string>
     <string name="scheme_picker_close">关闭</string>

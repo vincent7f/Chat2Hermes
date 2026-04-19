@@ -262,6 +262,19 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
+            OutlinedButton(
+                onClick = {
+                    viewModel.testChatCompletion(networkBase, apiKey, networkModel)
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.test_chat))
+            }
+            Text(
+                text = stringResource(R.string.test_chat_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Text(stringResource(R.string.tts_engine_label), style = MaterialTheme.typography.labelLarge)
             Row(
                 verticalAlignment = Alignment.CenterVertically,

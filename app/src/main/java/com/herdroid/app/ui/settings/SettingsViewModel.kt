@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.herdroid.app.HerdroidApplication
 import com.herdroid.app.R
+import com.herdroid.app.data.chat.OpenAiChatClient
 import com.herdroid.app.data.settings.SettingsRepository
 import com.herdroid.app.data.settings.TtsEngineType
 import com.herdroid.app.domain.HaConnectionTester
@@ -26,6 +27,8 @@ class SettingsViewModel(
     private val repository: SettingsRepository,
     private val app: HerdroidApplication,
 ) : AndroidViewModel(application) {
+
+    private val chatClient = OpenAiChatClient(app.okHttpClient)
 
     private val _userMessage = MutableStateFlow<String?>(null)
     val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
@@ -107,6 +110,45 @@ class SettingsViewModel(
         }
     }
 
+    /** 使用当前填写的基址、API Key、模型，发送默认内容「hi」测试 /v1/chat/completions。 */
+    fun testChatCompletion(networkBaseUrl: String, apiKey: String, model: String) {
+        val root = networkBaseUrl.trim()
+        if (root.isEmpty()) {
+            _userMessage.value = appCtx.getString(R.string.test_feedback_tts_url_empty)
+            return
+        }
+        if (apiKey.isBlank()) {
+            _userMessage.value = appCtx.getString(R.string.chat_need_api_key)
+            return
+        }
+        viewModelScope.launch {
+            if (!hasActiveNetwork()) {
+                _userMessage.value = appCtx.getString(R.string.test_feedback_network_unavailable)
+                return@launch
+            }
+            _userMessage.value = appCtx.getString(R.string.test_chat_testing)
+            val result = withContext(Dispatchers.IO) {
+                chatClient.chatCompletions(
+                    baseUrl = root,
+                    apiKey = apiKey.trim(),
+                    model = model.trim().ifEmpty { "hermes-agent" },
+                    messages = listOf("user" to DEFAULT_TEST_CHAT_PROMPT),
+                )
+            }
+            _userMessage.value = result.fold(
+                onSuccess = { reply ->
+                    appCtx.getString(R.string.test_chat_ok, reply)
+                },
+                onFailure = { t ->
+                    appCtx.getString(
+                        R.string.test_chat_fail,
+                        t.message ?: t.javaClass.simpleName,
+                    )
+                },
+            )
+        }
+    }
+
     fun testNetworkTts(networkBaseUrl: String, networkApiKey: String, networkModel: String) {
         val root = networkBaseUrl.trim()
         if (root.isEmpty()) {
@@ -129,6 +171,8 @@ class SettingsViewModel(
     }
 
     companion object {
+        private const val DEFAULT_TEST_CHAT_PROMPT = "hi"
+
         fun factory(app: HerdroidApplication): ViewModelProvider.Factory {
             return object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
