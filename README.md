@@ -6,6 +6,7 @@
 
 | 文档 | 说明 |
 |------|------|
+| [Features.md](Features.md) | 功能点清单（与代码、Release 对齐） |
 | [docs/Ideas.md](docs/Ideas.md) | 原始设想与目标 |
 | [docs/PRD.md](docs/PRD.md) | 产品需求与验收标准 |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构与模块划分 |
