@@ -4,8 +4,6 @@
     <string name="main_title">Herdroid</string>
     <string name="cd_open_settings">打开设置</string>
     <string name="last_message_label">最近消息</string>
-    <string name="chat_section_title">对话</string>
-    <string name="chat_section_subtitle">OpenAI 兼容：对话根地址由设置中的访问协议、地址、端口自动拼接，请求 POST …/v1/chat/completions，并携带 API Key 与模型名</string>
     <string name="chat_input_hint">输入消息…</string>
     <string name="chat_empty">发送消息以开始对话</string>
     <string name="chat_need_api_key">请先在设置中填写 API Key</string>

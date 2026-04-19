@@ -98,15 +98,6 @@ fun MainScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.Start,
         ) {
-            Text(
-                text = stringResource(R.string.chat_section_title),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = stringResource(R.string.chat_section_subtitle),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             LazyColumn(
                 state = listState,
                 modifier = Modifier
