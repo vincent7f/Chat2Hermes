@@ -19,7 +19,7 @@
 
 - 与同局域网内的 HA 保持实时连接（具体协议见 PRD 开放问题）。
 - 在设置中配置访问协议、主机地址、端口，以及 API Key、模型名（对话根地址由前三项自动拼接）。
-- 主界面多轮文本对话（`POST …/v1/chat/completions`）。
+- 主界面多轮文本对话（`POST …/v1/chat/completions`，SSE 流式、`stream: true`）。
 
 ## 构建与验证
 

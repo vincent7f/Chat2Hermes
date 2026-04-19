@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -88,7 +88,11 @@ fun MainScreen(
         ViewCompat.requestApplyInsets(rootView.rootView)
     }
 
-    LaunchedEffect(chatMessages.size, chatMessages.lastOrNull()?.id) {
+    LaunchedEffect(
+        chatMessages.size,
+        chatMessages.lastOrNull()?.id,
+        chatMessages.lastOrNull()?.text,
+    ) {
         if (chatMessages.isNotEmpty()) {
             val last = chatMessages.lastIndex
             if (last >= 0) {
@@ -160,9 +164,17 @@ fun MainScreen(
                         )
                     }
                 } else {
-                    items(chatMessages, key = { it.id }) { msg ->
+                    itemsIndexed(
+                        chatMessages,
+                        key = { _, msg -> msg.id },
+                    ) { index, msg ->
+                        val showStreamingPlaceholder = chatLoading &&
+                            index == chatMessages.lastIndex &&
+                            msg.role == ChatMessageRole.Assistant &&
+                            msg.text.isEmpty()
                         ChatBubble(
                             message = msg,
+                            showStreamingPlaceholder = showStreamingPlaceholder,
                             onReadAloud = { viewModel.readMessageAloud(msg.text) },
                             onResend = { viewModel.sendChatMessage(msg.text) },
                             onCopy = { viewModel.copyMessageToClipboard(msg.text) },
@@ -255,11 +267,17 @@ fun MainScreen(
 @Composable
 private fun ChatBubble(
     message: ChatUiMessage,
+    showStreamingPlaceholder: Boolean = false,
     onReadAloud: () -> Unit,
     onResend: () -> Unit,
     onCopy: () -> Unit,
 ) {
     val isUser = message.role == ChatMessageRole.User
+    val bodyText = if (!isUser && message.text.isEmpty() && showStreamingPlaceholder) {
+        stringResource(R.string.chat_streaming_placeholder)
+    } else {
+        message.text
+    }
     var menuExpanded by remember(message.id) { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -272,6 +290,7 @@ private fun ChatBubble(
             ) {
                 MessageBubbleWithMenu(
                     message = message,
+                    displayText = bodyText,
                     menuExpanded = menuExpanded,
                     onMenuExpandedChange = { menuExpanded = it },
                     onReadAloud = onReadAloud,
@@ -285,6 +304,7 @@ private fun ChatBubble(
         } else {
             MessageBubbleWithMenu(
                 message = message,
+                displayText = bodyText,
                 menuExpanded = menuExpanded,
                 onMenuExpandedChange = { menuExpanded = it },
                 onReadAloud = onReadAloud,
@@ -299,6 +319,7 @@ private fun ChatBubble(
 @Composable
 private fun MessageBubbleWithMenu(
     message: ChatUiMessage,
+    displayText: String,
     menuExpanded: Boolean,
     onMenuExpandedChange: (Boolean) -> Unit,
     onReadAloud: () -> Unit,
@@ -323,8 +344,13 @@ private fun MessageBubbleWithMenu(
                 },
         ) {
             Text(
-                text = message.text,
+                text = displayText,
                 style = MaterialTheme.typography.bodyMedium,
+                color = if (displayText != message.text) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
                 modifier = Modifier.padding(12.dp),
             )
         }

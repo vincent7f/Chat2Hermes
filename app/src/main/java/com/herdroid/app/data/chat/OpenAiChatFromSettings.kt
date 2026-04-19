@@ -6,7 +6,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * 主界面与设置页与 Hermes 的 OpenAI 兼容对话共用：同一套根 URL（[HealthCheckUrlFactory.buildHttpOrigin]）与 [OpenAiChatClient.chatCompletions]。
+ * 主界面与设置页与 Hermes 的 OpenAI 兼容对话共用：同一套根 URL（[HealthCheckUrlFactory.buildHttpOrigin]）与
+ * [OpenAiChatClient.chatCompletionsStream]（SSE）。
  * Hermes API Server 说明见 `docs/HERMES_API_SERVER.md`。
  */
 object OpenAiChatFromSettings {
@@ -63,23 +64,33 @@ object OpenAiChatFromSettings {
         )
     }
 
-    fun complete(
-        client: OpenAiChatClient,
-        prepared: Prepared,
-        messages: List<Pair<String, String>>,
-    ): Result<String> = client.chatCompletions(
-        baseUrl = prepared.baseUrl,
-        apiKey = prepared.apiKey,
-        model = prepared.model,
-        messages = messages,
-    )
-
-    /** 与设置页「测试对话」、主界面发消息共用：在 IO 线程执行 [complete]。 */
+    /** 与设置页「测试对话」等：收集完整回复，无增量回调。 */
     suspend fun executeCompletions(
         client: OpenAiChatClient,
         prepared: Prepared,
         messages: List<Pair<String, String>>,
+    ): Result<String> = executeCompletionsStreaming(
+        client,
+        prepared,
+        messages,
+        onContentDelta = {},
+    )
+
+    /**
+     * 主界面对话：在 IO 线程读 SSE，[onContentDelta] 在 OkHttp 读线程同步调用（请自行 `Handler`/Main 投递 UI）。
+     */
+    suspend fun executeCompletionsStreaming(
+        client: OpenAiChatClient,
+        prepared: Prepared,
+        messages: List<Pair<String, String>>,
+        onContentDelta: (String) -> Unit,
     ): Result<String> = withContext(Dispatchers.IO) {
-        complete(client, prepared, messages)
+        client.chatCompletionsStream(
+            baseUrl = prepared.baseUrl,
+            apiKey = prepared.apiKey,
+            model = prepared.model,
+            messages = messages,
+            onContentDelta = onContentDelta,
+        )
     }
 }

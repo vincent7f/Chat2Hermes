@@ -4,6 +4,8 @@ import android.app.Application
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.herdroid.app.R
@@ -34,6 +36,8 @@ class MainViewModel(
 ) : AndroidViewModel(application) {
 
     private val ttsSpeaker = SystemTtsSpeaker(application)
+
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     val preferences: StateFlow<UserPreferences> = settingsRepository.preferencesFlow
         .stateIn(
@@ -94,50 +98,69 @@ class MainViewModel(
                     userSendState = UserMessageSendState.Sending,
                 )
                 val userMsgId = userMsg.id
-                _chatMessages.update { it + userMsg }
-
                 val apiMessages = _chatMessages.value.map { m ->
                     when (m.role) {
                         ChatMessageRole.User -> "user" to m.text
                         ChatMessageRole.Assistant -> "assistant" to m.text
                     }
-                }
+                } + ("user" to trimmed)
 
-                val result = OpenAiChatFromSettings.executeCompletions(
+                val assistantMsg = ChatUiMessage(
+                    id = ++chatMessageSeq,
+                    role = ChatMessageRole.Assistant,
+                    text = "",
+                )
+                val assistantMsgId = assistantMsg.id
+                _chatMessages.update { it + userMsg + assistantMsg }
+
+                val result = OpenAiChatFromSettings.executeCompletionsStreaming(
                     chatClient,
                     prepared,
                     apiMessages,
-                )
-
-                result.fold(
-                    onSuccess = { reply ->
+                ) { delta ->
+                    mainHandler.post {
                         _chatMessages.update { list ->
-                            val marked = list.map { m ->
-                                if (m.id == userMsgId) {
-                                    m.copy(userSendState = UserMessageSendState.Sent)
+                            list.map { m ->
+                                if (m.id == assistantMsgId) {
+                                    m.copy(text = m.text + delta)
                                 } else {
                                     m
                                 }
                             }
-                            marked + ChatUiMessage(
-                                id = ++chatMessageSeq,
-                                role = ChatMessageRole.Assistant,
-                                text = reply,
-                            )
+                        }
+                    }
+                }
+
+                result.fold(
+                    onSuccess = { fullReply ->
+                        _chatMessages.update { list ->
+                            list.map { m ->
+                                when (m.id) {
+                                    userMsgId -> m.copy(userSendState = UserMessageSendState.Sent)
+                                    assistantMsgId -> m.copy(text = fullReply)
+                                    else -> m
+                                }
+                            }
                         }
                         val latestPrefs = settingsRepository.preferencesFlow.first()
                         if (latestPrefs.autoPlayTts) {
-                            speakWithOptionalVolumeWarning(reply)
+                            speakWithOptionalVolumeWarning(fullReply)
                         }
                     },
                     onFailure = { t ->
                         _chatMessages.update { list ->
-                            list.map { m ->
+                            val markedUser = list.map { m ->
                                 if (m.id == userMsgId) {
                                     m.copy(userSendState = UserMessageSendState.Failed)
                                 } else {
                                     m
                                 }
+                            }
+                            val asst = markedUser.find { it.id == assistantMsgId }
+                            if (asst == null || asst.text.isBlank()) {
+                                markedUser.filterNot { it.id == assistantMsgId }
+                            } else {
+                                markedUser
                             }
                         }
                         _userMessage.value = app.getString(
