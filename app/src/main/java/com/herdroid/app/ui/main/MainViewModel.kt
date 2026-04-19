@@ -7,7 +7,6 @@ import com.herdroid.app.R
 import com.herdroid.app.data.chat.OpenAiChatClient
 import com.herdroid.app.data.settings.SettingsRepository
 import com.herdroid.app.data.settings.UserPreferences
-import com.herdroid.app.domain.tts.TtsManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,7 +23,6 @@ import kotlinx.coroutines.withContext
 class MainViewModel(
     application: Application,
     private val settingsRepository: SettingsRepository,
-    private val ttsManager: TtsManager,
     private val chatClient: OpenAiChatClient,
 ) : AndroidViewModel(application) {
 
@@ -55,11 +53,11 @@ class MainViewModel(
         if (trimmed.isEmpty() || _chatLoading.value) return
         val prefs = preferences.value
         val app = getApplication<Application>()
-        if (prefs.networkTtsApiKey.isBlank()) {
+        if (prefs.apiKey.isBlank()) {
             _userMessage.value = app.getString(R.string.chat_need_api_key)
             return
         }
-        if (prefs.networkTtsBaseUrl.isBlank()) {
+        if (prefs.apiBaseUrl.isBlank()) {
             _userMessage.value = app.getString(R.string.chat_need_base_url)
             return
         }
@@ -82,9 +80,9 @@ class MainViewModel(
 
                 val result = withContext(Dispatchers.IO) {
                     chatClient.chatCompletions(
-                        baseUrl = prefs.networkTtsBaseUrl,
-                        apiKey = prefs.networkTtsApiKey,
-                        model = prefs.networkTtsModel,
+                        baseUrl = prefs.apiBaseUrl,
+                        apiKey = prefs.apiKey,
+                        model = prefs.modelName,
                         messages = apiMessages,
                     )
                 }
@@ -96,17 +94,6 @@ class MainViewModel(
                                 id = ++chatMessageSeq,
                                 role = ChatMessageRole.Assistant,
                                 text = reply,
-                            )
-                        }
-                        val p = preferences.value
-                        if (p.autoPlayTts) {
-                            ttsManager.speak(
-                                rawText = reply,
-                                engine = p.ttsEngine,
-                                networkBaseUrl = p.networkTtsBaseUrl,
-                                networkApiKey = p.networkTtsApiKey,
-                                networkModel = p.networkTtsModel,
-                                onNetworkError = { err -> _userMessage.value = err },
                             )
                         }
                     },

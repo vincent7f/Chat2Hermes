@@ -2,7 +2,6 @@ package com.herdroid.app.data.settings
 
 import android.content.Context
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -18,11 +17,10 @@ class SettingsRepository(private val context: Context) {
         val SCHEME = stringPreferencesKey("scheme")
         val HOST = stringPreferencesKey("host")
         val PORT = intPreferencesKey("port")
-        val AUTO_PLAY_TTS = booleanPreferencesKey("auto_play_tts")
-        val TTS_ENGINE = stringPreferencesKey("tts_engine")
-        val NETWORK_TTS_BASE = stringPreferencesKey("network_tts_base_url")
-        val NETWORK_TTS_API_KEY = stringPreferencesKey("network_tts_api_key")
-        val NETWORK_TTS_MODEL = stringPreferencesKey("network_tts_model")
+        /** 历史键名保留，存 API 根地址。 */
+        val API_BASE_URL = stringPreferencesKey("network_tts_base_url")
+        val API_KEY = stringPreferencesKey("network_tts_api_key")
+        val MODEL_NAME = stringPreferencesKey("network_tts_model")
     }
 
     val preferencesFlow: Flow<UserPreferences> = context.dataStore.data.map { p ->
@@ -33,41 +31,28 @@ class SettingsRepository(private val context: Context) {
         scheme: String,
         host: String,
         port: Int,
-        autoPlayTts: Boolean,
-        ttsEngine: TtsEngineType,
-        networkTtsBaseUrl: String,
-        networkTtsApiKey: String,
-        networkTtsModel: String,
+        apiBaseUrl: String,
+        apiKey: String,
+        modelName: String,
     ) {
         context.dataStore.edit { prefs ->
             prefs[Keys.SCHEME] = scheme.trim()
             prefs[Keys.HOST] = host.trim()
             prefs[Keys.PORT] = port
-            prefs[Keys.AUTO_PLAY_TTS] = autoPlayTts
-            prefs[Keys.TTS_ENGINE] = ttsEngine.name
-            prefs[Keys.NETWORK_TTS_BASE] = networkTtsBaseUrl.trim()
-            prefs[Keys.NETWORK_TTS_API_KEY] = networkTtsApiKey.trim()
-            prefs[Keys.NETWORK_TTS_MODEL] = networkTtsModel.trim()
+            prefs[Keys.API_BASE_URL] = apiBaseUrl.trim()
+            prefs[Keys.API_KEY] = apiKey.trim()
+            prefs[Keys.MODEL_NAME] = modelName.trim()
         }
     }
 
-    suspend fun setAutoPlayTts(enabled: Boolean) {
-        context.dataStore.edit { it[Keys.AUTO_PLAY_TTS] = enabled }
-    }
-
     private fun Preferences.toUserPreferences(): UserPreferences {
-        val engineName = this[Keys.TTS_ENGINE] ?: TtsEngineType.SYSTEM.name
-        val engine = runCatching { TtsEngineType.valueOf(engineName) }
-            .getOrDefault(TtsEngineType.SYSTEM)
         return UserPreferences(
             scheme = this[Keys.SCHEME] ?: "http",
             host = this[Keys.HOST] ?: "192.168.3.112",
             port = this[Keys.PORT] ?: 8642,
-            autoPlayTts = this[Keys.AUTO_PLAY_TTS] ?: false,
-            ttsEngine = engine,
-            networkTtsBaseUrl = this[Keys.NETWORK_TTS_BASE] ?: "http://192.168.3.112:8642",
-            networkTtsApiKey = this[Keys.NETWORK_TTS_API_KEY] ?: "myapiky",
-            networkTtsModel = this[Keys.NETWORK_TTS_MODEL] ?: "hermes-agent",
+            apiBaseUrl = this[Keys.API_BASE_URL] ?: "http://192.168.3.112:8642",
+            apiKey = this[Keys.API_KEY] ?: "myapiky",
+            modelName = this[Keys.MODEL_NAME] ?: "hermes-agent",
         )
     }
 }

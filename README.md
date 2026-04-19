@@ -1,6 +1,6 @@
 # Herdroid
 
-**Herdroid** 是 Hermes Agent（文档内简称 **HA**）的 Android 客户端：在局域网内与 HA 建立实时连接，接收消息并可选用系统或网络 TTS 播报。
+**Herdroid** 是 Hermes Agent（文档内简称 **HA**）的 Android 客户端：在局域网内与 HA 建立连接，并通过 OpenAI 兼容 API 进行文本对话。
 
 ## 文档索引
 
@@ -17,9 +17,8 @@
 ## 功能摘要
 
 - 与同局域网内的 HA 保持实时连接（具体协议见 PRD 开放问题）。
-- 在设置中配置访问协议、主机地址与端口。
-- 主界面一键开关：是否对 HA 返回内容自动 TTS 播报。
-- TTS：系统 `TextToSpeech` 与可选网络 TTS 引擎，支持失败降级。
+- 在设置中配置访问协议、主机地址、端口，以及 OpenAI 兼容 API 的服务基础 URL、API Key、模型名。
+- 主界面多轮文本对话（`POST …/v1/chat/completions`）。
 
 ## 构建与验证
 

@@ -16,7 +16,6 @@ class MainViewModelFactory(
             return MainViewModel(
                 application,
                 app.settingsRepository,
-                app.ttsManager,
                 OpenAiChatClient(app.okHttpClient),
             ) as T
         }

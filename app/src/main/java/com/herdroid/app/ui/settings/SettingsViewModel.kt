@@ -12,7 +12,6 @@ import com.herdroid.app.HerdroidApplication
 import com.herdroid.app.R
 import com.herdroid.app.data.chat.OpenAiChatClient
 import com.herdroid.app.data.settings.SettingsRepository
-import com.herdroid.app.data.settings.TtsEngineType
 import com.herdroid.app.domain.HaConnectionTester
 import com.herdroid.app.domain.HealthCheckUrlFactory
 import kotlinx.coroutines.Dispatchers
@@ -51,22 +50,18 @@ class SettingsViewModel(
         scheme: String,
         host: String,
         port: Int,
-        autoPlayTts: Boolean,
-        ttsEngine: TtsEngineType,
-        networkTtsBaseUrl: String,
-        networkTtsApiKey: String,
-        networkTtsModel: String,
+        apiBaseUrl: String,
+        apiKey: String,
+        modelName: String,
     ) {
         viewModelScope.launch {
             repository.update(
                 scheme = scheme,
                 host = host,
                 port = port,
-                autoPlayTts = autoPlayTts,
-                ttsEngine = ttsEngine,
-                networkTtsBaseUrl = networkTtsBaseUrl,
-                networkTtsApiKey = networkTtsApiKey,
-                networkTtsModel = networkTtsModel,
+                apiBaseUrl = apiBaseUrl,
+                apiKey = apiKey,
+                modelName = modelName,
             )
         }
     }
@@ -110,9 +105,8 @@ class SettingsViewModel(
         }
     }
 
-    /** 仅调用 /v1/chat/completions，不涉及 TTS。 */
-    fun testChatCompletion(networkBaseUrl: String, apiKey: String, model: String) {
-        val root = networkBaseUrl.trim()
+    fun testChatCompletion(apiBaseUrl: String, apiKey: String, model: String) {
+        val root = apiBaseUrl.trim()
         if (root.isEmpty()) {
             _userMessage.value = appCtx.getString(R.string.chat_need_base_url)
             return
@@ -146,27 +140,6 @@ class SettingsViewModel(
                     )
                 },
             )
-        }
-    }
-
-    fun testNetworkTts(networkBaseUrl: String, networkApiKey: String, networkModel: String) {
-        val root = networkBaseUrl.trim()
-        if (root.isEmpty()) {
-            _userMessage.value = appCtx.getString(R.string.test_feedback_tts_url_empty)
-            return
-        }
-        _userMessage.value = appCtx.getString(R.string.test_feedback_tts_testing)
-        val sample = appCtx.getString(R.string.network_tts_test_phrase)
-        app.ttsManager.testNetworkTts(root, networkApiKey.trim(), networkModel, sample) { success, detail ->
-            _userMessage.value = if (success) {
-                appCtx.getString(R.string.test_feedback_tts_ok)
-            } else {
-                if (detail == "play_or_http_failed") {
-                    appCtx.getString(R.string.test_feedback_tts_fail_generic)
-                } else {
-                    appCtx.getString(R.string.test_feedback_tts_fail_detail, detail)
-                }
-            }
         }
     }
 

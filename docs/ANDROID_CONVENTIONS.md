@@ -18,7 +18,7 @@
 - **Application 类**：若使用 Hilt 等，注册 `android:name`。
 - **单 Activity**：`MainActivity` 为 `exported` 启动入口；其余组件非必要不 `exported`。
 - **权限最小化**：
-  - `INTERNET`：连接 HA 与网络 TTS 时必需。
+  - `INTERNET`：连接 HA 与对话 API 时必需。
   - **不**默认申请麦克风、位置、通讯录等与 PRD 无关权限。
 - **局域网 HTTP**：若 HA 仅提供 `http://`，必须通过 **Network Security Config** 或明确开发策略处理，禁止在发布版中无限制 `usesCleartextTraffic="true"` 而不加域限制（见下节）。
 

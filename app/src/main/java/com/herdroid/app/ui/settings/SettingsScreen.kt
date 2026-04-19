@@ -26,9 +26,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -46,7 +46,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.herdroid.app.R
 import com.herdroid.app.data.settings.SettingsRepository
-import com.herdroid.app.data.settings.TtsEngineType
 import com.herdroid.app.data.settings.UserPreferences
 
 private val SCHEME_OPTIONS = listOf("http", "https")
@@ -78,20 +77,18 @@ fun SettingsScreen(
     var schemePickerVisible by remember { mutableStateOf(false) }
     var host by remember { mutableStateOf(prefs.host) }
     var portText by remember { mutableStateOf(prefs.port.toString()) }
-    var ttsEngine by remember { mutableStateOf(prefs.ttsEngine) }
-    var networkBase by remember { mutableStateOf(prefs.networkTtsBaseUrl) }
-    var apiKey by remember { mutableStateOf(prefs.networkTtsApiKey) }
-    var networkModel by remember { mutableStateOf(prefs.networkTtsModel) }
+    var apiBaseUrl by remember { mutableStateOf(prefs.apiBaseUrl) }
+    var apiKey by remember { mutableStateOf(prefs.apiKey) }
+    var modelName by remember { mutableStateOf(prefs.modelName) }
     var portError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(prefs) {
         scheme = normalizeScheme(prefs.scheme)
         host = prefs.host
         portText = prefs.port.toString()
-        ttsEngine = prefs.ttsEngine
-        networkBase = prefs.networkTtsBaseUrl
-        apiKey = prefs.networkTtsApiKey
-        networkModel = prefs.networkTtsModel
+        apiBaseUrl = prefs.apiBaseUrl
+        apiKey = prefs.apiKey
+        modelName = prefs.modelName
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -255,16 +252,25 @@ fun SettingsScreen(
                 singleLine = true,
             )
             OutlinedTextField(
-                value = networkModel,
-                onValueChange = { networkModel = it },
-                label = { Text(stringResource(R.string.network_tts_model)) },
-                placeholder = { Text(stringResource(R.string.hint_network_tts_model)) },
+                value = apiBaseUrl,
+                onValueChange = { apiBaseUrl = it },
+                label = { Text(stringResource(R.string.api_service_base_url)) },
+                placeholder = { Text(stringResource(R.string.hint_api_service_base_url)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = false,
+                minLines = 2,
+            )
+            OutlinedTextField(
+                value = modelName,
+                onValueChange = { modelName = it },
+                label = { Text(stringResource(R.string.model_name_label)) },
+                placeholder = { Text(stringResource(R.string.hint_model_name)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
             OutlinedButton(
                 onClick = {
-                    viewModel.testChatCompletion(networkBase, apiKey, networkModel)
+                    viewModel.testChatCompletion(apiBaseUrl, apiKey, modelName)
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -275,41 +281,6 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(stringResource(R.string.tts_engine_label), style = MaterialTheme.typography.labelLarge)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RadioButton(
-                    selected = ttsEngine == TtsEngineType.SYSTEM,
-                    onClick = { ttsEngine = TtsEngineType.SYSTEM },
-                )
-                Text(stringResource(R.string.tts_system))
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RadioButton(
-                    selected = ttsEngine == TtsEngineType.NETWORK,
-                    onClick = { ttsEngine = TtsEngineType.NETWORK },
-                )
-                Text(stringResource(R.string.tts_network))
-            }
-            OutlinedTextField(
-                value = networkBase,
-                onValueChange = { networkBase = it },
-                label = { Text(stringResource(R.string.network_tts_base)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = false,
-                minLines = 2,
-            )
-            OutlinedButton(
-                onClick = {
-                    viewModel.testNetworkTts(networkBase, apiKey, networkModel)
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.test_network_tts))
-            }
             Button(
                 onClick = {
                     val port = portText.toIntOrNull()
@@ -321,11 +292,9 @@ fun SettingsScreen(
                         scheme = scheme,
                         host = host,
                         port = port,
-                        autoPlayTts = prefs.autoPlayTts,
-                        ttsEngine = ttsEngine,
-                        networkTtsBaseUrl = networkBase,
-                        networkTtsApiKey = apiKey,
-                        networkTtsModel = networkModel,
+                        apiBaseUrl = apiBaseUrl,
+                        apiKey = apiKey,
+                        modelName = modelName,
                     )
                     onBack()
                 },

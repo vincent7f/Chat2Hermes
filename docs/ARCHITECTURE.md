@@ -1,6 +1,6 @@
 # 架构说明 — Herdroid
 
-本文档描述客户端的分层、模块演进策略及与 HA、TTS 的集成边界。实现须与 [PRD.md](PRD.md) 一致；平台约定见 [ANDROID_CONVENTIONS.md](ANDROID_CONVENTIONS.md)。
+本文档描述客户端的分层、模块演进策略及与 HA 的集成边界。实现须与 [PRD.md](PRD.md) 一致；平台约定见 [ANDROID_CONVENTIONS.md](ANDROID_CONVENTIONS.md)。
 
 ## 1. 技术栈建议（Android 标准实践）
 
@@ -17,17 +17,16 @@
 
 适合协议未定、快速打通 MVP：
 
-- `app`：UI、ViewModel、HA 客户端首版、DataStore、TTS 封装。
+- `app`：UI、ViewModel、HA 客户端首版、DataStore、OpenAI 兼容对话客户端。
 
 ### 2.2 演进（多模块，可选）
 
-当 HA 协议与网络 TTS 稳定后，可拆为：
+当 HA 协议稳定后，可拆为：
 
 | 模块 | 职责 |
 |------|------|
 | `:app` | Application、导航、主题、各 feature 入口 |
 | `:core:network` 或 `:ha-client` | HA 连接抽象与具体实现（OkHttp / Ktor 等） |
-| `:core:tts` | 系统 TTS、网络 TTS 适配器与统一接口 |
 | `:core:model` | 共享数据模型与领域类型 |
 
 原则：**依赖方向** 自 feature → core → 基础库；避免循环依赖。
@@ -36,14 +35,13 @@
 
 ### 3.1 表现层（UI）
 
-- **主界面**：展示连接状态、最近消息或简化日志、**自动播报**开关。
-- **设置**：协议/主机/端口、TTS 引擎类型、网络 TTS 参数。
+- **主界面**：展示连接状态、最近消息或简化日志、对话输入。
+- **设置**：协议/主机/端口、OpenAI 兼容 API 的服务基础 URL、API Key、模型名。
 - 通过 `ViewModel` 收集 `StateFlow`/`Flow`，单向数据流；副作用（如发起重连）经用户意图或 `LaunchedEffect` 触发。
 
 ### 3.2 领域 / 用例层（可选包结构）
 
 - **HaSession**：封装「按当前配置连接 / 断开 / 重试」的用例，向上暴露连接状态与消息流。
-- **TtsPolicy**：根据设置选择 `SystemTtsEngine` 或 `NetworkTtsEngine`；实现排队/打断策略（默认建议：**新消息打断当前朗读**，避免积压；若 PRD 另有决议则以此为准）。
 
 ### 3.3 数据层
 
@@ -58,18 +56,7 @@
 - **对接清单**：鉴权头、子路径、心跳间隔、重连退避（指数退避 + 上限）、最大消息长度。
 - 所有假设记录在 PRD「开放问题」并在此交叉引用。
 
-## 5. TTS 设计
-
-| 组件 | 说明 |
-|------|------|
-| `TtsEngine` 接口 | `speak(text: String)`、`stop()`、`release()` |
-| 系统实现 | 包装 `TextToSpeech`，处理初始化回调与语言 |
-| 网络实现 | HTTP 客户端请求配置端点；播放 `MediaPlayer`/`ExoPlayer`（按返回格式选型） |
-| 降级 | 网络失败时回退系统 TTS（若 PRD 确认） |
-
-播报前可对文本做 **strip（Markdown/标签）**，规则依赖 PRD 中「消息语义」结论。
-
-## 6. 组件与数据流（Mermaid）
+## 5. 组件与数据流（Mermaid）
 
 ```mermaid
 flowchart LR
@@ -79,27 +66,23 @@ flowchart LR
   end
   subgraph domain [领域]
     HaSession[HA会话用例]
-    TtsPolicy[TTS策略]
   end
   subgraph data [数据层]
     HaClient[HA客户端实现]
     Prefs[DataStore设置]
   end
   MainScreen --> HaSession
-  MainScreen --> TtsPolicy
   SettingsScreen --> Prefs
   HaSession --> HaClient
-  TtsPolicy --> SystemTTS[系统TTS]
-  TtsPolicy --> NetworkTTS[网络TTS可选]
   HaClient -->|"LAN"| HaServer[HA服务]
 ```
 
 数据流概要：
 
 1. 用户修改设置 → DataStore 更新 → `HaSession` 收到配置变更 → 重连（策略见决议）。
-2. `HaClient` 推送消息 → 若自动播报开启 → `TtsPolicy` → 选定引擎播放。
+2. 主界面通过 OpenAI 兼容客户端与配置的服务基础 URL 进行对话。
 
-## 7. 包结构示例（单模块）
+## 6. 包结构示例（单模块）
 
 仅作命名参考，实现时可微调：
 
@@ -108,7 +91,6 @@ com.herdroid.app
   ui.main
   ui.settings
   feature.ha
-  feature.tts
   data.ha
   data.settings
 ```
