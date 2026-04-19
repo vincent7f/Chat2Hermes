@@ -2,6 +2,7 @@ package com.herdroid.app.data.settings
 
 import android.content.Context
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -19,6 +20,7 @@ class SettingsRepository(private val context: Context) {
         val PORT = intPreferencesKey("port")
         val API_KEY = stringPreferencesKey("network_tts_api_key")
         val MODEL_NAME = stringPreferencesKey("network_tts_model")
+        val AUTO_PLAY_TTS = booleanPreferencesKey("auto_play_tts")
     }
 
     val preferencesFlow: Flow<UserPreferences> = context.dataStore.data.map { p ->
@@ -41,6 +43,12 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
+    suspend fun setAutoPlayTts(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.AUTO_PLAY_TTS] = enabled
+        }
+    }
+
     private fun Preferences.toUserPreferences(): UserPreferences {
         return UserPreferences(
             scheme = this[Keys.SCHEME] ?: "http",
@@ -48,6 +56,7 @@ class SettingsRepository(private val context: Context) {
             port = this[Keys.PORT] ?: 8642,
             apiKey = this[Keys.API_KEY] ?: "myapiky",
             modelName = this[Keys.MODEL_NAME] ?: "hermes-agent",
+            autoPlayTts = this[Keys.AUTO_PLAY_TTS] ?: false,
         )
     }
 }

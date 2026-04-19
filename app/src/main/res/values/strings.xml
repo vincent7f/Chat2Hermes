@@ -3,6 +3,8 @@
     <string name="app_name">Herdroid</string>
     <string name="main_title">Herdroid</string>
     <string name="cd_open_settings">打开设置</string>
+    <string name="cd_auto_play_tts">自动朗读助手回复</string>
+    <string name="volume_too_low_for_tts">音量设置太小，可能听不见，请增大音量</string>
     <string name="last_message_label">最近消息</string>
     <string name="chat_input_hint">输入消息…</string>
     <string name="chat_empty">发送消息以开始对话</string>

@@ -8,6 +8,8 @@ data class UserPreferences(
     val port: Int,
     val apiKey: String,
     val modelName: String,
+    /** 主界面开关：收到助手回复后是否自动用系统 TTS 朗读。 */
+    val autoPlayTts: Boolean,
 ) {
     /** OpenAI 兼容 API 根地址（POST …/v1/chat/completions），由协议、地址、端口拼接，不含路径。 */
     val apiBaseUrl: String
@@ -20,6 +22,7 @@ data class UserPreferences(
             port = 8642,
             apiKey = "myapiky",
             modelName = "hermes-agent",
+            autoPlayTts = false,
         )
     }
 }

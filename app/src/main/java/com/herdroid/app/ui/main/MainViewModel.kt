@@ -8,7 +8,9 @@ import com.herdroid.app.data.chat.OpenAiChatClient
 import com.herdroid.app.data.chat.OpenAiChatFromSettings
 import com.herdroid.app.data.settings.SettingsRepository
 import com.herdroid.app.data.settings.UserPreferences
+import com.herdroid.app.domain.MediaVolumeChecker
 import com.herdroid.app.domain.hasActiveNetwork
+import com.herdroid.app.domain.tts.SystemTtsSpeaker
 import com.herdroid.app.ui.hermes.errorMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,12 +21,14 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** 主界面 Hermes 对话：与设置页「测试对话」相同管线（[OpenAiChatFromSettings] + [executeCompletions]）。 */
+/** 主界面 Hermes 对话；可选在收到助手回复后用系统 TTS 朗读。 */
 class MainViewModel(
     application: Application,
     private val settingsRepository: SettingsRepository,
     private val chatClient: OpenAiChatClient,
 ) : AndroidViewModel(application) {
+
+    private val ttsSpeaker = SystemTtsSpeaker(application)
 
     val preferences: StateFlow<UserPreferences> = settingsRepository.preferencesFlow
         .stateIn(
@@ -43,6 +47,12 @@ class MainViewModel(
 
     private val _chatLoading = MutableStateFlow(false)
     val chatLoading: StateFlow<Boolean> = _chatLoading.asStateFlow()
+
+    fun setAutoPlayTts(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setAutoPlayTts(enabled)
+        }
+    }
 
     fun clearChat() {
         _chatMessages.value = emptyList()
@@ -95,6 +105,13 @@ class MainViewModel(
                                 text = reply,
                             )
                         }
+                        val latestPrefs = settingsRepository.preferencesFlow.first()
+                        if (latestPrefs.autoPlayTts) {
+                            if (MediaVolumeChecker.isMediaVolumeTooLow(app)) {
+                                _userMessage.value = app.getString(R.string.volume_too_low_for_tts)
+                            }
+                            ttsSpeaker.speak(reply)
+                        }
                     },
                     onFailure = { t ->
                         _userMessage.value = app.getString(
@@ -111,5 +128,10 @@ class MainViewModel(
 
     fun clearUserMessage() {
         _userMessage.value = null
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        ttsSpeaker.shutdown()
     }
 }

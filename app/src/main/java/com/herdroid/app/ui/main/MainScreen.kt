@@ -24,6 +24,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -42,12 +43,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.core.view.ViewCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.herdroid.app.R
+import com.herdroid.app.data.settings.UserPreferences
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +64,8 @@ fun MainScreen(
     val userMessage by viewModel.userMessage.collectAsState()
     val chatMessages by viewModel.chatMessages.collectAsState()
     val chatLoading by viewModel.chatLoading.collectAsState()
+    val prefs by viewModel.preferences.collectAsStateWithLifecycle(initialValue = UserPreferences.DEFAULT)
+    val cdAutoPlayTts = stringResource(R.string.cd_auto_play_tts)
 
     val snackbarHostState = remember { SnackbarHostState() }
     var inputText by remember { mutableStateOf("") }
@@ -91,8 +98,19 @@ fun MainScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.main_title)) },
                 actions = {
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.cd_open_settings))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Switch(
+                            checked = prefs.autoPlayTts,
+                            onCheckedChange = viewModel::setAutoPlayTts,
+                            modifier = Modifier.semantics {
+                                contentDescription = cdAutoPlayTts
+                            },
+                        )
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.cd_open_settings))
+                        }
                     }
                 },
             )
