@@ -66,13 +66,13 @@ Made-with: Cursor
 
 ---
 
-## `v0.3.0`（规划中）
+## `v0.3.0`
 
-功能追踪：完成后将 `- [ ]` 改为 `- [x]` 并填写实现 commit。
+已合入 **`main`**；初版功能见 `63bd2b5`，后续修订见各条 commit。
 
 - [x] 文本朗读在独立线程编排，主线程仅做必要的 `TextToSpeech.speak` 等调用（详见代码注释）。实现 commit：`3b112e3`（`SystemTtsSpeaker` 后台预处理与分段朗读）
-- [x] 边读边显示：三行歌词式弹窗，中间当前行粗体、向上滚动；暂停与退出。实现 commit：`3b112e3`（初版）；修订：保留分段换行（`forSpeechPreserveParagraphs`）、三行区可滚动展示全文、朗读进度回调切主线程、末段播完再关窗（见含 `fix(tts): lyric dialog` 的提交）。
+- [x] 边读边显示：三行歌词式弹窗，中间当前行粗体、向上滚动；暂停与退出。初版：`3b112e3`；修订：`1c71a6c`（`MessageSanitizer.forSpeechPreserveParagraphs`、三行可滚动全文、主线程 `onStart`、末段 `onDone` 后再关窗）
 - [x] 统一收发消息折叠样式：一行内「前缀若干字符 + 展开」。实现 commit：`3b112e3`（`ChatUiStyle` / `collapsedPrefixPreview`）
-- [x] 接收回复流式阶段：单行展示并以总长度更新，减少界面跳动。实现 commit：`3b112e3`（`ChatBubble` 流式摘要行）
+- [x] 接收回复流式阶段：单行展示并以总长度更新，减少界面跳动。初版：`3b112e3`（`ChatBubble` 单行摘要）；文案修订：`6a14c26`（仅一行 **`【接收中】已经接收%1$d字符`**，`chat_streaming_receiving`）
 - [x] 回复消息快捷菜单增加「展开说说」。实现 commit：`3b112e3`（菜单项 + `scrollToItem`）
 - [x] 回复消息按 Markdown 格式显示（展开后）。实现 commit：`3b112e3`（`multiplatform-markdown-renderer` 0.27 + `AssistantMarkdownBody`）
