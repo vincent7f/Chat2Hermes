@@ -12,6 +12,8 @@ import com.herdroid.app.domain.MediaVolumeChecker
 import com.herdroid.app.domain.hasActiveNetwork
 import com.herdroid.app.domain.tts.SystemTtsSpeaker
 import com.herdroid.app.ui.hermes.errorMessage
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -39,6 +41,12 @@ class MainViewModel(
 
     private val _userMessage = MutableStateFlow<String?>(null)
     val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
+
+    /** 朗读前音量过低时在主界面展示的浮窗文案；约 5 秒后由 [dismissVolumeWarningAfterDelay] 清除。 */
+    private val _volumeWarning = MutableStateFlow<String?>(null)
+    val volumeWarning: StateFlow<String?> = _volumeWarning.asStateFlow()
+
+    private var volumeWarningDismissJob: Job? = null
 
     private var chatMessageSeq = 0L
 
@@ -107,8 +115,11 @@ class MainViewModel(
                         }
                         val latestPrefs = settingsRepository.preferencesFlow.first()
                         if (latestPrefs.autoPlayTts) {
-                            if (MediaVolumeChecker.isMediaVolumeTooLow(app)) {
-                                _userMessage.value = app.getString(R.string.volume_too_low_for_tts)
+                            if (MediaVolumeChecker.isMediaVolumeBelowHalf(app)) {
+                                showVolumeWarning(app.getString(R.string.volume_warning_low_tts))
+                            } else {
+                                volumeWarningDismissJob?.cancel()
+                                _volumeWarning.value = null
                             }
                             ttsSpeaker.speak(reply)
                         }
@@ -126,12 +137,26 @@ class MainViewModel(
         }
     }
 
+    private fun showVolumeWarning(message: String) {
+        _volumeWarning.value = message
+        volumeWarningDismissJob?.cancel()
+        volumeWarningDismissJob = viewModelScope.launch {
+            delay(VOLUME_WARNING_MS)
+            _volumeWarning.value = null
+        }
+    }
+
     fun clearUserMessage() {
         _userMessage.value = null
     }
 
     override fun onCleared() {
-        super.onCleared()
+        volumeWarningDismissJob?.cancel()
         ttsSpeaker.shutdown()
+        super.onCleared()
+    }
+
+    companion object {
+        private const val VOLUME_WARNING_MS = 5_000L
     }
 }
