@@ -1,9 +1,6 @@
 package com.herdroid.app.ui.settings
 
 import android.app.Application
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -11,9 +8,11 @@ import androidx.lifecycle.viewModelScope
 import com.herdroid.app.HerdroidApplication
 import com.herdroid.app.R
 import com.herdroid.app.data.chat.OpenAiChatClient
+import com.herdroid.app.data.chat.OpenAiChatFromSettings
 import com.herdroid.app.data.settings.SettingsRepository
 import com.herdroid.app.domain.HaConnectionTester
 import com.herdroid.app.domain.HealthCheckUrlFactory
+import com.herdroid.app.domain.hasActiveNetwork
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,14 +32,6 @@ class SettingsViewModel(
     val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
 
     private val appCtx: Application get() = getApplication()
-
-    /** 无活动网络时（如飞行模式）提前提示；纯局域网服务在已连 Wi‑Fi 时通常仍有 INTERNET 能力位。 */
-    private fun hasActiveNetwork(): Boolean {
-        val cm = appCtx.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return true
-        val network = cm.activeNetwork ?: return false
-        val caps = cm.getNetworkCapabilities(network) ?: return false
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-    }
 
     fun clearUserMessage() {
         _userMessage.value = null
@@ -76,7 +67,7 @@ class SettingsViewModel(
                 _userMessage.value = appCtx.getString(R.string.test_feedback_host_empty)
                 return@launch
             }
-            if (!hasActiveNetwork()) {
+            if (!appCtx.hasActiveNetwork()) {
                 _userMessage.value = appCtx.getString(R.string.test_feedback_network_unavailable)
                 return@launch
             }
@@ -104,45 +95,41 @@ class SettingsViewModel(
     }
 
     fun testChatCompletion(scheme: String, host: String, portText: String, apiKey: String, model: String) {
-        val port = portText.toIntOrNull()
-        if (port == null || port < 1 || port > 65535) {
-            _userMessage.value = appCtx.getString(R.string.test_feedback_port_invalid)
-            return
-        }
-        val root = HealthCheckUrlFactory.buildHttpOrigin(scheme, host, port)
-        if (root.isNullOrEmpty()) {
-            _userMessage.value = appCtx.getString(R.string.chat_need_base_url)
-            return
-        }
-        if (apiKey.isBlank()) {
-            _userMessage.value = appCtx.getString(R.string.chat_need_api_key)
-            return
-        }
-        viewModelScope.launch {
-            if (!hasActiveNetwork()) {
-                _userMessage.value = appCtx.getString(R.string.test_feedback_network_unavailable)
-                return@launch
-            }
-            _userMessage.value = appCtx.getString(R.string.test_chat_testing)
-            val result = withContext(Dispatchers.IO) {
-                chatClient.chatCompletions(
-                    baseUrl = root,
-                    apiKey = apiKey.trim(),
-                    model = model.trim().ifEmpty { "hermes-agent" },
-                    messages = listOf("user" to DEFAULT_TEST_CHAT_PROMPT),
-                )
-            }
-            _userMessage.value = result.fold(
-                onSuccess = { reply ->
-                    appCtx.getString(R.string.test_chat_ok, reply)
-                },
-                onFailure = { t ->
-                    appCtx.getString(
-                        R.string.test_chat_fail,
-                        t.message ?: t.javaClass.simpleName,
+        when (val outcome = OpenAiChatFromSettings.prepareFromPortText(scheme, host, portText, apiKey, model)) {
+            is OpenAiChatFromSettings.PrepareOutcome.PortInvalid ->
+                _userMessage.value = appCtx.getString(R.string.test_feedback_port_invalid)
+            is OpenAiChatFromSettings.PrepareOutcome.BaseUrlInvalid ->
+                _userMessage.value = appCtx.getString(R.string.chat_need_base_url)
+            is OpenAiChatFromSettings.PrepareOutcome.ApiKeyMissing ->
+                _userMessage.value = appCtx.getString(R.string.chat_need_api_key)
+            is OpenAiChatFromSettings.PrepareOutcome.Ready -> {
+                val prepared = outcome.prepared
+                viewModelScope.launch {
+                    if (!appCtx.hasActiveNetwork()) {
+                        _userMessage.value = appCtx.getString(R.string.test_feedback_network_unavailable)
+                        return@launch
+                    }
+                    _userMessage.value = appCtx.getString(R.string.test_chat_testing)
+                    val result = withContext(Dispatchers.IO) {
+                        OpenAiChatFromSettings.complete(
+                            chatClient,
+                            prepared,
+                            listOf("user" to DEFAULT_TEST_CHAT_PROMPT),
+                        )
+                    }
+                    _userMessage.value = result.fold(
+                        onSuccess = { reply ->
+                            appCtx.getString(R.string.test_chat_ok, reply)
+                        },
+                        onFailure = { t ->
+                            appCtx.getString(
+                                R.string.test_chat_fail,
+                                t.message ?: t.javaClass.simpleName,
+                            )
+                        },
                     )
-                },
-            )
+                }
+            }
         }
     }
 
