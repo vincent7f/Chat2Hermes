@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -40,9 +42,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.core.view.ViewCompat
 import com.herdroid.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,6 +64,11 @@ fun MainScreen(
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val focusManager = LocalFocusManager.current
+    val rootView = LocalView.current
+
+    LaunchedEffect(Unit) {
+        ViewCompat.requestApplyInsets(rootView.rootView)
+    }
 
     LaunchedEffect(chatMessages.size, chatMessages.lastOrNull()?.id) {
         if (chatMessages.isNotEmpty()) {
@@ -90,13 +99,15 @@ fun MainScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
+        // 整列施加 IME / 导航栏 insets，使底部输入区随键盘上移（勿用 Scaffold.bottomBar，Insets 易不生效）
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(16.dp)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = Alignment.Start,
+                .fillMaxSize()
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             LazyColumn(
                 state = listState,
