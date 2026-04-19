@@ -79,3 +79,9 @@ Made-with: Cursor
 - [x] 回复消息快捷菜单增加「展开说说」。实现 commit：`3b112e3`（菜单项 + `scrollToItem`）
 - [x] 所有消息快捷菜单「选择」：弹出对话框，内嵌系统可选中文本（`TextView` + `ScrollView`），长按或拖选后用系统工具栏复制。实现 commit：含 `feat(chat): message selection dialog with selectable TextView` 的提交
 - [x] 回复消息按 Markdown 格式显示（展开后）。实现 commit：`3b112e3`（`multiplatform-markdown-renderer` 0.27 + `AssistantMarkdownBody`）
+
+---
+
+## License
+
+This project is released under the **MIT License** already in the repository: see [`LICENSE`](LICENSE) at the repo root (Copyright © 2026 Vincent Liang).
