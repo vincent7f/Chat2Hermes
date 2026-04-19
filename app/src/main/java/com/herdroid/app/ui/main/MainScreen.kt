@@ -100,6 +100,7 @@ fun MainScreen(
     val ttsLyric by viewModel.ttsLyric.collectAsStateWithLifecycle()
     val chatMessages by viewModel.chatMessages.collectAsState()
     val prefs by viewModel.preferences.collectAsStateWithLifecycle(initialValue = UserPreferences.DEFAULT)
+    val collapseExpandEpoch by viewModel.collapseExpandEpoch.collectAsStateWithLifecycle()
     val cdAutoPlayTts = stringResource(R.string.cd_auto_play_tts)
     val cdChatNew = stringResource(R.string.cd_chat_new)
 
@@ -252,6 +253,7 @@ fun MainScreen(
                                 message = msg,
                                 showStreamingPlaceholder = showStreamingPlaceholder,
                                 autoPlayTts = prefs.autoPlayTts,
+                                collapseExpandEpoch = collapseExpandEpoch,
                                 onReadAloud = { viewModel.readMessageAloud(msg.text) },
                                 onResend = { viewModel.sendChatMessage(msg.text) },
                                 onCopy = { viewModel.copyMessageToClipboard(msg.text) },
@@ -435,6 +437,7 @@ private fun ChatBubble(
     message: ChatUiMessage,
     showStreamingPlaceholder: Boolean = false,
     autoPlayTts: Boolean = false,
+    collapseExpandEpoch: Long,
     onReadAloud: () -> Unit,
     onResend: () -> Unit,
     onCopy: () -> Unit,
@@ -461,6 +464,7 @@ private fun ChatBubble(
                     displayText = bodyText,
                     showStreamingPlaceholder = showStreamingPlaceholder,
                     collapseWhenAutoTts = autoPlayTts,
+                    collapseExpandEpoch = collapseExpandEpoch,
                     menuExpanded = menuExpanded,
                     onMenuExpandedChange = { menuExpanded = it },
                     onReadAloud = onReadAloud,
@@ -478,6 +482,7 @@ private fun ChatBubble(
                 displayText = bodyText,
                 showStreamingPlaceholder = showStreamingPlaceholder,
                 collapseWhenAutoTts = autoPlayTts,
+                collapseExpandEpoch = collapseExpandEpoch,
                 menuExpanded = menuExpanded,
                 onMenuExpandedChange = { menuExpanded = it },
                 onReadAloud = onReadAloud,
@@ -496,6 +501,7 @@ private fun MessageBubbleWithMenu(
     displayText: String,
     showStreamingPlaceholder: Boolean,
     collapseWhenAutoTts: Boolean,
+    collapseExpandEpoch: Long,
     menuExpanded: Boolean,
     onMenuExpandedChange: (Boolean) -> Unit,
     onReadAloud: () -> Unit,
@@ -547,6 +553,12 @@ private fun MessageBubbleWithMenu(
         if (!didApplyInitialCollapse) {
             replyExpanded = false
             didApplyInitialCollapse = true
+        }
+    }
+
+    LaunchedEffect(collapseExpandEpoch) {
+        if (collapseExpandEpoch > 0L) {
+            replyExpanded = false
         }
     }
 

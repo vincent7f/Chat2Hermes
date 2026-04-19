@@ -66,6 +66,13 @@ class MainViewModel(
     private val _chatMessages = MutableStateFlow<List<ChatUiMessage>>(emptyList())
     val chatMessages: StateFlow<List<ChatUiMessage>> = _chatMessages.asStateFlow()
 
+    /**
+     * 每次成功发起一轮新发送（用户消息 + 占位助手消息入列）时递增；
+     * UI 用于收起列表中所有已展开的气泡。
+     */
+    private val _collapseExpandEpoch = MutableStateFlow(0L)
+    val collapseExpandEpoch: StateFlow<Long> = _collapseExpandEpoch.asStateFlow()
+
     fun setAutoPlayTts(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setAutoPlayTts(enabled)
@@ -117,6 +124,7 @@ class MainViewModel(
                 timeMillis = nowMillis,
             )
             val assistantMsgId = assistantMsg.id
+            _collapseExpandEpoch.update { it + 1 }
             _chatMessages.update { it + userMsg + assistantMsg }
 
             val result = OpenAiChatFromSettings.executeCompletionsStreaming(

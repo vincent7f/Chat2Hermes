@@ -73,6 +73,7 @@ Made-with: Cursor
 - [x] 文本朗读在独立线程编排，主线程仅做必要的 `TextToSpeech.speak` 等调用（详见代码注释）。实现 commit：`3b112e3`（`SystemTtsSpeaker` 后台预处理与分段朗读）
 - [x] 边读边显示：三行歌词式弹窗，中间当前行粗体、向上滚动；暂停与退出。初版：`3b112e3`；修订：`1c71a6c`（`MessageSanitizer.forSpeechPreserveParagraphs`、三行可滚动全文、主线程 `onStart`、末段 `onDone` 后再关窗）
 - [x] 统一收发消息折叠样式：一行内「前缀若干字符 + 展开」。实现 commit：`3b112e3`（`ChatUiStyle` / `collapsedPrefixPreview`）
+- [x] 发送新消息后收起会话中所有已展开的气泡（`MainViewModel.collapseExpandEpoch`，入列前递增；各气泡 `LaunchedEffect` 将 `replyExpanded` 置为 `false`）。实现 commit：含本功能的提交（message：`feat(chat): collapse all expanded bubbles when sending`）
 - [x] 接收回复流式阶段：单行展示并以总长度更新，减少界面跳动。初版：`3b112e3`（`ChatBubble` 单行摘要）；文案修订：`6a14c26`（仅一行 **`【接收中】已经接收%1$d字符`**，`chat_streaming_receiving`）
 - [x] 回复消息快捷菜单增加「展开说说」。实现 commit：`3b112e3`（菜单项 + `scrollToItem`）
 - [x] 回复消息按 Markdown 格式显示（展开后）。实现 commit：`3b112e3`（`multiplatform-markdown-renderer` 0.27 + `AssistantMarkdownBody`）
