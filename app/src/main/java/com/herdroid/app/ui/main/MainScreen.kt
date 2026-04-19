@@ -37,6 +37,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -64,6 +65,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -78,7 +80,10 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.ViewCompat
+import android.widget.ScrollView
+import android.widget.TextView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mikepenz.markdown.m3.Markdown
 import com.herdroid.app.R
@@ -112,6 +117,7 @@ fun MainScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     var inputText by remember { mutableStateOf("") }
+    var selectionDialogText by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
     val listScrollScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
@@ -257,6 +263,7 @@ fun MainScreen(
                                 onReadAloud = { viewModel.readMessageAloud(msg.text) },
                                 onResend = { viewModel.sendChatMessage(msg.text) },
                                 onCopy = { viewModel.copyMessageToClipboard(msg.text) },
+                                onSelectMessage = { selectionDialogText = msg.text },
                                 onScrollToSelf = {
                                     listScrollScope.launch {
                                         listState.scrollToItem(index)
@@ -337,7 +344,65 @@ fun MainScreen(
                 modifier = Modifier.zIndex(2f),
             )
         }
+
+        selectionDialogText?.let { fullText ->
+            MessageSelectionDialog(
+                text = fullText,
+                onDismiss = { selectionDialogText = null },
+                modifier = Modifier.zIndex(3f),
+            )
+        }
     }
+}
+
+@Composable
+private fun MessageSelectionDialog(
+    text: String,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val maxBodyHeight = (LocalConfiguration.current.screenHeightDp * 0.55f).dp
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = modifier,
+        title = {
+            Text(
+                text = stringResource(R.string.chat_select_dialog_title),
+                style = MaterialTheme.typography.titleLarge,
+            )
+        },
+        text = {
+            AndroidView(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = maxBodyHeight),
+                factory = { ctx ->
+                    val pad = (16 * ctx.resources.displayMetrics.density).toInt()
+                    ScrollView(ctx).apply {
+                        isFillViewport = true
+                        addView(
+                            TextView(ctx).apply {
+                                setTextIsSelectable(true)
+                                setPadding(pad, pad, pad, pad)
+                                textSize = 16f
+                            },
+                        )
+                    }
+                },
+                update = { scrollView ->
+                    val tv = scrollView.getChildAt(0) as TextView
+                    tv.text = text
+                    tv.setTextColor(onSurface.toArgb())
+                },
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.chat_select_dialog_close))
+            }
+        },
+    )
 }
 
 @Composable
@@ -441,6 +506,7 @@ private fun ChatBubble(
     onReadAloud: () -> Unit,
     onResend: () -> Unit,
     onCopy: () -> Unit,
+    onSelectMessage: () -> Unit,
     onScrollToSelf: () -> Unit,
 ) {
     val isUser = message.role == ChatMessageRole.User
@@ -470,6 +536,7 @@ private fun ChatBubble(
                     onReadAloud = onReadAloud,
                     onResend = onResend,
                     onCopy = onCopy,
+                    onSelectMessage = onSelectMessage,
                     isUser = true,
                     onExpandTalk = null,
                 )
@@ -488,6 +555,7 @@ private fun ChatBubble(
                 onReadAloud = onReadAloud,
                 onResend = onResend,
                 onCopy = onCopy,
+                onSelectMessage = onSelectMessage,
                 isUser = false,
                 onExpandTalk = onScrollToSelf,
             )
@@ -507,6 +575,7 @@ private fun MessageBubbleWithMenu(
     onReadAloud: () -> Unit,
     onResend: () -> Unit,
     onCopy: () -> Unit,
+    onSelectMessage: () -> Unit,
     isUser: Boolean,
     onExpandTalk: (() -> Unit)?,
 ) {
@@ -688,6 +757,13 @@ private fun MessageBubbleWithMenu(
                 onClick = {
                     onMenuExpandedChange(false)
                     onReadAloud()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.chat_menu_select)) },
+                onClick = {
+                    onMenuExpandedChange(false)
+                    onSelectMessage()
                 },
             )
             if (isUser) {

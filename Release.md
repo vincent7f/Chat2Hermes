@@ -76,4 +76,5 @@ Made-with: Cursor
 - [x] 发送新消息后收起会话中所有已展开的气泡（`MainViewModel.collapseExpandEpoch`，入列前递增；各气泡 `LaunchedEffect` 将 `replyExpanded` 置为 `false`）。实现 commit：含本功能的提交（message：`feat(chat): collapse all expanded bubbles when sending`）
 - [x] 接收回复流式阶段：单行展示并以总长度更新，减少界面跳动。初版：`3b112e3`（`ChatBubble` 单行摘要）；文案修订：`6a14c26`（仅一行 **`【接收中】已经接收%1$d字符`**，`chat_streaming_receiving`）
 - [x] 回复消息快捷菜单增加「展开说说」。实现 commit：`3b112e3`（菜单项 + `scrollToItem`）
+- [x] 所有消息快捷菜单「选择」：弹出对话框，内嵌系统可选中文本（`TextView` + `ScrollView`），长按或拖选后用系统工具栏复制。实现 commit：含 `feat(chat): message selection dialog with selectable TextView` 的提交
 - [x] 回复消息按 Markdown 格式显示（展开后）。实现 commit：`3b112e3`（`multiplatform-markdown-renderer` 0.27 + `AssistantMarkdownBody`）
