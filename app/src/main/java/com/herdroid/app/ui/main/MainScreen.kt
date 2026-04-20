@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.PaddingValues
@@ -118,6 +117,13 @@ fun MainScreen(
     val listScrollScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val rootView = LocalView.current
+    val sendCurrentInput: () -> Unit = {
+        if (inputText.isNotBlank()) {
+            viewModel.sendChatMessage(inputText)
+            inputText = ""
+            focusManager.clearFocus()
+        }
+    }
 
     LaunchedEffect(Unit) {
         ViewCompat.requestApplyInsets(rootView.rootView)
@@ -135,10 +141,7 @@ fun MainScreen(
         chatMessages.lastOrNull()?.text,
     ) {
         if (chatMessages.isNotEmpty()) {
-            val last = chatMessages.lastIndex
-            if (last >= 0) {
-                listState.scrollToItem(last)
-            }
+            listState.scrollToItem(chatMessages.lastIndex)
         }
     }
 
@@ -308,20 +311,12 @@ fun MainScreen(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(
                         onSend = {
-                            if (inputText.isNotBlank()) {
-                                viewModel.sendChatMessage(inputText)
-                                inputText = ""
-                                focusManager.clearFocus()
-                            }
+                            sendCurrentInput()
                         },
                     ),
                 )
                 IconButton(
-                    onClick = {
-                        viewModel.sendChatMessage(inputText)
-                        inputText = ""
-                        focusManager.clearFocus()
-                    },
+                    onClick = sendCurrentInput,
                     enabled = inputText.isNotBlank(),
                 ) {
                     Icon(
@@ -621,6 +616,8 @@ private fun MessageBubbleWithMenu(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = if (displayText != message.text) {
                                     MaterialTheme.colorScheme.onSurfaceVariant
+                                } else if (isUser) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
                                 } else {
                                     MaterialTheme.colorScheme.onSurface
                                 },
