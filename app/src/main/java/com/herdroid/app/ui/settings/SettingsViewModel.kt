@@ -58,6 +58,7 @@ class SettingsViewModel(
         port: Int,
         apiKey: String,
         modelName: String,
+        runsAutoReconnectAttempts: Int,
     ) {
         repository.update(
             scheme = scheme,
@@ -65,6 +66,7 @@ class SettingsViewModel(
             port = port,
             apiKey = apiKey,
             modelName = modelName,
+            runsAutoReconnectAttempts = runsAutoReconnectAttempts,
         )
     }
 

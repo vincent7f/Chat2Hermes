@@ -88,11 +88,31 @@ class HermesRunsClient(private val httpClient: OkHttpClient) {
         model: String,
         messages: List<Pair<String, String>>,
         onContentDelta: (String) -> Unit,
+        maxReconnectAttempts: Int,
         onReconnect: (attempt: Int) -> Unit = {},
     ): Result<String> {
         val runId = createRun(baseUrl, apiKey, model, messages).getOrElse { return Result.failure(it) }
+        return continueRunAndCollectText(
+            baseUrl = baseUrl,
+            apiKey = apiKey,
+            runId = runId,
+            onContentDelta = onContentDelta,
+            maxReconnectAttempts = maxReconnectAttempts,
+            onReconnect = onReconnect,
+        )
+    }
+
+    fun continueRunAndCollectText(
+        baseUrl: String,
+        apiKey: String,
+        runId: String,
+        onContentDelta: (String) -> Unit,
+        maxReconnectAttempts: Int,
+        onReconnect: (attempt: Int) -> Unit = {},
+    ): Result<String> {
         val full = StringBuilder()
         var reconnectAttempt = 0
+        val maxAttempts = maxReconnectAttempts.coerceIn(0, 10)
         while (true) {
             var catchUpCursor = if (reconnectAttempt > 0) 0 else full.length
             val result = streamRunEvents(baseUrl, apiKey, runId) { delta ->
@@ -111,7 +131,7 @@ class HermesRunsClient(private val httpClient: OkHttpClient) {
                 return Result.success(full.toString())
             }
             val failure = result.exceptionOrNull() ?: RuntimeException("unknown runs stream error")
-            val canRetry = reconnectAttempt < MAX_RECONNECT_ATTEMPTS && isRecoverableStreamError(failure)
+            val canRetry = reconnectAttempt < maxAttempts && isRecoverableStreamError(failure)
             if (!canRetry) return Result.failure(failure)
             reconnectAttempt += 1
             onReconnect(reconnectAttempt)
@@ -187,7 +207,6 @@ class HermesRunsClient(private val httpClient: OkHttpClient) {
 
     companion object {
         private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
-        private const val MAX_RECONNECT_ATTEMPTS = 3
         private const val RECONNECT_BACKOFF_MS = 1000L
     }
 

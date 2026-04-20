@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import java.io.IOException
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.herdroid.app.R
@@ -81,6 +82,9 @@ class MainViewModel(
 
     private val _chatMessages = MutableStateFlow<List<ChatUiMessage>>(emptyList())
     val chatMessages: StateFlow<List<ChatUiMessage>> = _chatMessages.asStateFlow()
+    private var pendingRunResume: PendingRunResume? = null
+    private val _resumeRunPrompt = MutableStateFlow<ResumeRunPrompt?>(null)
+    val resumeRunPrompt: StateFlow<ResumeRunPrompt?> = _resumeRunPrompt.asStateFlow()
 
     /**
      * 若存在上次持久化的消息，则非 `null`，主界面展示「继续 / 新对话」。
@@ -152,30 +156,53 @@ class MainViewModel(
         viewModelScope.launch {
             val prepared = prepareChatRequest(app) ?: return@launch
             val pending = enqueuePendingMessages(trimmed)
-
-            val result = OpenAiChatFromSettings.executeRunsStreaming(
-                client = runsClient,
-                prepared = prepared,
+            val prefs = settingsRepository.preferencesFlow.first()
+            val createRun = runsClient.createRun(
+                baseUrl = prepared.baseUrl,
+                apiKey = prepared.apiKey,
+                model = prepared.model,
                 messages = pending.apiMessages,
-                onContentDelta = { delta ->
-                    mainHandler.post { applyAssistantDelta(pending.assistantMsgId, delta) }
-                },
-                onReconnect = {
-                    mainHandler.post {
-                        _userMessage.value = app.getString(R.string.chat_reconnected_receiving)
-                    }
-                },
             )
+            val runId = createRun.getOrElse { t ->
+                onChatFailure(app, pending.userMsgId, pending.assistantMsgId, t)
+                return@launch
+            }
 
-            result.fold(
-                onSuccess = { fullReply ->
-                    onChatSuccess(pending.userMsgId, pending.assistantMsgId, fullReply)
-                },
-                onFailure = { t ->
-                    onChatFailure(app, pending.userMsgId, pending.assistantMsgId, t)
-                },
+            streamExistingRun(
+                app = app,
+                prepared = prepared,
+                runId = runId,
+                userMsgId = pending.userMsgId,
+                assistantMsgId = pending.assistantMsgId,
+                maxReconnectAttempts = prefs.runsAutoReconnectAttempts,
+                allowManualResumePrompt = true,
             )
         }
+    }
+
+    fun continueFailedRunSubscription() {
+        val pending = pendingRunResume ?: return
+        _resumeRunPrompt.value = null
+        val app = getApplication<Application>()
+        viewModelScope.launch {
+            streamExistingRun(
+                app = app,
+                prepared = pending.prepared,
+                runId = pending.runId,
+                userMsgId = pending.userMsgId,
+                assistantMsgId = pending.assistantMsgId,
+                maxReconnectAttempts = pending.maxReconnectAttempts,
+                allowManualResumePrompt = true,
+            )
+        }
+    }
+
+    fun dismissRunResumePrompt(markAsFailed: Boolean = true) {
+        val pending = pendingRunResume
+        _resumeRunPrompt.value = null
+        pendingRunResume = null
+        if (!markAsFailed || pending == null) return
+        markAsFailedAfterResumeAborted(pending.userMsgId, pending.assistantMsgId)
     }
 
     private suspend fun prepareChatRequest(app: Application): OpenAiChatFromSettings.Prepared? {
@@ -259,6 +286,80 @@ class MainViewModel(
             R.string.chat_request_failed,
             t.message ?: t.javaClass.simpleName,
         )
+    }
+
+    private suspend fun streamExistingRun(
+        app: Application,
+        prepared: OpenAiChatFromSettings.Prepared,
+        runId: String,
+        userMsgId: Long,
+        assistantMsgId: Long,
+        maxReconnectAttempts: Int,
+        allowManualResumePrompt: Boolean,
+    ) {
+        val result = runsClient.continueRunAndCollectText(
+            baseUrl = prepared.baseUrl,
+            apiKey = prepared.apiKey,
+            runId = runId,
+            onContentDelta = { delta ->
+                mainHandler.post { applyAssistantDelta(assistantMsgId, delta) }
+            },
+            maxReconnectAttempts = maxReconnectAttempts,
+            onReconnect = {
+                mainHandler.post {
+                    _userMessage.value = app.getString(R.string.chat_reconnected_receiving)
+                }
+            },
+        )
+        result.fold(
+            onSuccess = { fullReply ->
+                pendingRunResume = null
+                _resumeRunPrompt.value = null
+                onChatSuccess(userMsgId, assistantMsgId, fullReply)
+            },
+            onFailure = { t ->
+                if (allowManualResumePrompt && canPromptResume(t)) {
+                    pendingRunResume = PendingRunResume(
+                        prepared = prepared,
+                        runId = runId,
+                        userMsgId = userMsgId,
+                        assistantMsgId = assistantMsgId,
+                        maxReconnectAttempts = maxReconnectAttempts,
+                    )
+                    _resumeRunPrompt.value = ResumeRunPrompt(runId = runId)
+                    _userMessage.value = app.getString(R.string.chat_request_failed, t.message ?: t.javaClass.simpleName)
+                } else {
+                    pendingRunResume = null
+                    _resumeRunPrompt.value = null
+                    onChatFailure(app, userMsgId, assistantMsgId, t)
+                }
+            },
+        )
+    }
+
+    private fun canPromptResume(t: Throwable): Boolean {
+        if (t is IOException) return true
+        val msg = t.message.orEmpty().lowercase()
+        return msg.contains("failed to connect") ||
+            msg.contains("timeout") ||
+            msg.contains("connection reset") ||
+            msg.contains("stream was reset")
+    }
+
+    private fun markAsFailedAfterResumeAborted(userMsgId: Long, assistantMsgId: Long) {
+        _chatMessages.update { list ->
+            val markedUser = list.map { m ->
+                if (m.id == userMsgId) m.copy(userSendState = UserMessageSendState.Failed) else m
+            }
+            val asst = markedUser.find { it.id == assistantMsgId }
+            if (asst == null || asst.text.isBlank()) {
+                markedUser.filterNot { it.id == assistantMsgId }
+            } else {
+                markedUser.map { m ->
+                    if (m.id == assistantMsgId) m.copy(replyComplete = true) else m
+                }
+            }
+        }
     }
 
     private fun updateMessageById(messageId: Long, transform: (ChatUiMessage) -> ChatUiMessage) {
@@ -482,8 +583,20 @@ data class TtsLyricUiState(
     val isPaused: Boolean,
 )
 
+data class ResumeRunPrompt(
+    val runId: String,
+)
+
 private data class PendingChatRequest(
     val userMsgId: Long,
     val assistantMsgId: Long,
     val apiMessages: List<Pair<String, String>>,
+)
+
+private data class PendingRunResume(
+    val prepared: OpenAiChatFromSettings.Prepared,
+    val runId: String,
+    val userMsgId: Long,
+    val assistantMsgId: Long,
+    val maxReconnectAttempts: Int,
 )

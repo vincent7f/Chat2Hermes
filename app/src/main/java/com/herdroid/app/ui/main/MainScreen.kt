@@ -101,6 +101,7 @@ fun MainScreen(
     val prefs by viewModel.preferences.collectAsStateWithLifecycle(initialValue = UserPreferences.DEFAULT)
     val collapseExpandEpoch by viewModel.collapseExpandEpoch.collectAsStateWithLifecycle()
     val resumeConversationPrompt by viewModel.resumeConversationPrompt.collectAsStateWithLifecycle()
+    val resumeRunPrompt by viewModel.resumeRunPrompt.collectAsStateWithLifecycle()
     val cdAutoPlayTts = stringResource(R.string.cd_auto_play_tts)
     val cdChatNew = stringResource(R.string.cd_chat_new)
 
@@ -165,6 +166,23 @@ fun MainScreen(
                 dismissButton = {
                     TextButton(onClick = { viewModel.discardPersistedAndStartNew() }) {
                         Text(stringResource(R.string.resume_conversation_new))
+                    }
+                },
+            )
+        }
+        if (resumeRunPrompt != null) {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissRunResumePrompt(markAsFailed = true) },
+                title = { Text(stringResource(R.string.chat_resume_same_run_title)) },
+                text = { Text(stringResource(R.string.chat_resume_same_run_body)) },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.continueFailedRunSubscription() }) {
+                        Text(stringResource(R.string.chat_resume_same_run_continue))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.dismissRunResumePrompt(markAsFailed = true) }) {
+                        Text(stringResource(R.string.chat_resume_same_run_cancel))
                     }
                 },
             )

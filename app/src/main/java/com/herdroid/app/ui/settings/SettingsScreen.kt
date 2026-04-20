@@ -78,6 +78,7 @@ fun SettingsScreen(
         initialValue = UserPreferences.DEFAULT,
     )
     val portInvalidText = stringResource(R.string.port_invalid)
+    val runsReconnectInvalidText = stringResource(R.string.runs_reconnect_attempts_invalid)
 
     var scheme by remember { mutableStateOf(normalizeScheme(prefs.scheme)) }
     var schemePickerVisible by remember { mutableStateOf(false) }
@@ -85,7 +86,9 @@ fun SettingsScreen(
     var portText by remember { mutableStateOf(prefs.port.toString()) }
     var apiKey by remember { mutableStateOf(prefs.apiKey) }
     var modelName by remember { mutableStateOf(prefs.modelName) }
+    var runsReconnectAttemptsText by remember { mutableStateOf(prefs.runsAutoReconnectAttempts.toString()) }
     var portError by remember { mutableStateOf<String?>(null) }
+    var runsReconnectError by remember { mutableStateOf<String?>(null) }
 
     val activeProfileId by repository.activeProfileId.collectAsStateWithLifecycle(initialValue = "default")
     val profileIds by repository.profileIds.collectAsStateWithLifecycle(initialValue = listOf("default"))
@@ -99,6 +102,8 @@ fun SettingsScreen(
         portText = prefs.port.toString()
         apiKey = prefs.apiKey
         modelName = prefs.modelName
+        runsReconnectAttemptsText = prefs.runsAutoReconnectAttempts.toString()
+        runsReconnectError = null
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -363,6 +368,23 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
+            OutlinedTextField(
+                value = runsReconnectAttemptsText,
+                onValueChange = {
+                    runsReconnectAttemptsText = it
+                    runsReconnectError = null
+                },
+                label = { Text(stringResource(R.string.runs_reconnect_attempts_label)) },
+                placeholder = { Text(stringResource(R.string.runs_reconnect_attempts_hint)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                isError = runsReconnectError != null,
+                supportingText = {
+                    runsReconnectError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error)
+                    }
+                },
+            )
             OutlinedButton(
                 onClick = {
                     viewModel.testChatCompletion(scheme, host, portText, apiKey, modelName)
@@ -383,6 +405,11 @@ fun SettingsScreen(
                         portError = portInvalidText
                         return@Button
                     }
+                    val reconnectAttempts = runsReconnectAttemptsText.toIntOrNull()
+                    if (reconnectAttempts == null || reconnectAttempts !in 0..10) {
+                        runsReconnectError = runsReconnectInvalidText
+                        return@Button
+                    }
                     saveScope.launch {
                         viewModel.save(
                             scheme = scheme,
@@ -390,6 +417,7 @@ fun SettingsScreen(
                             port = port,
                             apiKey = apiKey,
                             modelName = modelName,
+                            runsAutoReconnectAttempts = reconnectAttempts,
                         )
                         onBack()
                     }

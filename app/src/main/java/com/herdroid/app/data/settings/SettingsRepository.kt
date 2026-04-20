@@ -77,6 +77,8 @@ class SettingsRepository(private val context: Context) {
                 prefs[kStr(def, "api_key")] = prefs[Legacy.API_KEY] ?: UserPreferences.DEFAULT.apiKey
                 prefs[kStr(def, "model_name")] = prefs[Legacy.MODEL_NAME] ?: UserPreferences.DEFAULT.modelName
                 prefs[kBool(def, "auto_play_tts")] = prefs[Legacy.AUTO_PLAY_TTS] ?: false
+                prefs[kInt(def, "runs_auto_reconnect_attempts")] =
+                    UserPreferences.DEFAULT.runsAutoReconnectAttempts
             } else {
                 seedDefaultProfile(prefs, def)
             }
@@ -94,6 +96,7 @@ class SettingsRepository(private val context: Context) {
         prefs[kStr(profileId, "api_key")] = d.apiKey
         prefs[kStr(profileId, "model_name")] = d.modelName
         prefs[kBool(profileId, "auto_play_tts")] = d.autoPlayTts
+        prefs[kInt(profileId, "runs_auto_reconnect_attempts")] = d.runsAutoReconnectAttempts
     }
 
     suspend fun update(
@@ -102,6 +105,7 @@ class SettingsRepository(private val context: Context) {
         port: Int,
         apiKey: String,
         modelName: String,
+        runsAutoReconnectAttempts: Int,
     ) {
         val active = context.dataStore.data.first()[Meta.ACTIVE] ?: "default"
         context.dataStore.edit { prefs ->
@@ -110,6 +114,8 @@ class SettingsRepository(private val context: Context) {
             prefs[kInt(active, "port")] = port
             prefs[kStr(active, "api_key")] = apiKey.trim()
             prefs[kStr(active, "model_name")] = modelName.trim()
+            prefs[kInt(active, "runs_auto_reconnect_attempts")] =
+                runsAutoReconnectAttempts.coerceIn(0, 10)
         }
     }
 
@@ -157,6 +163,7 @@ class SettingsRepository(private val context: Context) {
             prefs[kStr(newId, "api_key")] = current.apiKey
             prefs[kStr(newId, "model_name")] = current.modelName
             prefs[kBool(newId, "auto_play_tts")] = current.autoPlayTts
+            prefs[kInt(newId, "runs_auto_reconnect_attempts")] = current.runsAutoReconnectAttempts
         }
         return newId
     }
@@ -170,6 +177,8 @@ class SettingsRepository(private val context: Context) {
             apiKey = this[kStr(pid, "api_key")] ?: UserPreferences.DEFAULT.apiKey,
             modelName = this[kStr(pid, "model_name")] ?: UserPreferences.DEFAULT.modelName,
             autoPlayTts = this[kBool(pid, "auto_play_tts")] ?: false,
+            runsAutoReconnectAttempts = this[kInt(pid, "runs_auto_reconnect_attempts")]
+                ?: UserPreferences.DEFAULT.runsAutoReconnectAttempts,
         )
     }
 }
