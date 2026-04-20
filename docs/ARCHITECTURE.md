@@ -1,6 +1,6 @@
 # 架构说明 — Herdroid
 
-本文档描述客户端的分层、模块演进策略及与 HA 的集成边界。实现须与 [PRD.md](PRD.md) 一致；平台约定见 [ANDROID_CONVENTIONS.md](ANDROID_CONVENTIONS.md)。
+本文档描述客户端的分层、模块演进策略及与 HA 的 HTTP 接口集成边界。实现须与 [PRD.md](PRD.md) 一致；平台约定见 [ANDROID_CONVENTIONS.md](ANDROID_CONVENTIONS.md)。
 
 ## 1. 技术栈建议（Android 标准实践）
 
@@ -41,20 +41,22 @@
 
 ### 3.2 领域 / 用例层（可选包结构）
 
-- **HaSession**：封装「按当前配置连接 / 断开 / 重试」的用例，向上暴露连接状态与消息流。
+- **ChatSession**：封装「按当前配置发起对话请求 / 持久化当前会话」的用例，向上暴露消息列表与交互状态。
 
 ### 3.3 数据层
 
-- **HaClient（接口）**：`connect()`、`disconnect()`、`messages: Flow<Message>`、`connectionState: StateFlow<...>`。具体传输（WebSocket、SSE 等）由实现类完成，**不泄漏到 Composable**。
-- **SettingsRepository**：读写 DataStore；与 `HaSession` 共享配置变更时可 `restartSession()`。
+- **OpenAiChatClient**：面向 Hermes API Server 的 OpenAI 兼容 `POST /v1/chat/completions` 客户端，按 SSE 增量解析文本。
+- **SettingsRepository**：读写 DataStore，提供当前 profile 配置。
+- **ChatSessionRepository**：持久化当前会话的 `session id` 与消息 JSON，用于「继续上次对话」。
 
-## 4. HA 连接抽象（协议待定）
+## 4. HA 对话接入约定
 
-在 HA 官方协议文档落地前，客户端侧约定：
+客户端侧约定：
 
-- 配置项：`scheme`、`host`、`port`，解析为 `baseUrl` 或 `wsUrl`（实现时统一工厂方法）。
-- **对接清单**：鉴权头、子路径、心跳间隔、重连退避（指数退避 + 上限）、最大消息长度。
-- 所有假设记录在 PRD「开放问题」并在此交叉引用。
+- 配置项：`scheme`、`host`、`port`，解析为 HTTP 根地址（`baseUrl`）。
+- 对话请求使用 OpenAI 兼容 `POST /v1/chat/completions`，`stream: true`，响应 `text/event-stream`。
+- 鉴权使用 `Authorization: Bearer <apiKey>`。
+- 所有协议假设记录在 PRD「开放问题」并在此交叉引用。
 
 ## 5. 组件与数据流（Mermaid）
 
@@ -65,21 +67,23 @@ flowchart LR
     SettingsScreen[设置]
   end
   subgraph domain [领域]
-    HaSession[HA会话用例]
+    ChatSession[对话会话用例]
   end
   subgraph data [数据层]
-    HaClient[HA客户端实现]
+    OpenAiChatClient[OpenAI兼容客户端]
+    ChatStore[会话持久化]
     Prefs[DataStore设置]
   end
-  MainScreen --> HaSession
+  MainScreen --> ChatSession
   SettingsScreen --> Prefs
-  HaSession --> HaClient
-  HaClient -->|"LAN"| HaServer[HA服务]
+  ChatSession --> OpenAiChatClient
+  ChatSession --> ChatStore
+  OpenAiChatClient -->|"LAN"| HaServer[HA服务]
 ```
 
 数据流概要：
 
-1. 用户修改设置 → DataStore 更新 → `HaSession` 收到配置变更 → 重连（策略见决议）。
+1. 用户修改设置 → DataStore 更新 → 主界面读取新配置并用于后续请求。
 2. 主界面通过 OpenAI 兼容客户端与由协议、地址、端口拼接的根地址进行对话。
 
 ## 6. 包结构示例（单模块）
@@ -90,8 +94,7 @@ flowchart LR
 com.herdroid.app
   ui.main
   ui.settings
-  feature.ha
-  data.ha
+  data.chat
   data.settings
 ```
 

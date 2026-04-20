@@ -1,54 +1,10 @@
 package com.herdroid.app.domain
 
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withTimeout
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.Response
-import okhttp3.WebSocket
-import okhttp3.WebSocketListener
-import kotlin.coroutines.resume
 
-/**
- * Short-lived WebSocket open test (matches [com.herdroid.app.data.ha.WebSocketHaClient] transport).
- */
+/** HA 连接测试：当前仅提供 HTTP 健康检查。 */
 object HaConnectionTester {
-
-    suspend fun testWebSocket(
-        client: OkHttpClient,
-        url: String,
-        timeoutMs: Long = 12_000,
-        bearerToken: String = "",
-    ): Result<Unit> {
-        return try {
-            withTimeout(timeoutMs) {
-                suspendCancellableCoroutine { cont ->
-                    val rb = Request.Builder().url(url)
-                    val key = bearerToken.trim()
-                    if (key.isNotEmpty()) {
-                        rb.header("Authorization", "Bearer $key")
-                    }
-                    val request = rb.build()
-                    val ws = client.newWebSocket(
-                        request,
-                        object : WebSocketListener() {
-                            override fun onOpen(webSocket: WebSocket, response: Response) {
-                                webSocket.close(1000, "test")
-                                if (cont.isActive) cont.resume(Result.success(Unit))
-                            }
-
-                            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                                if (cont.isActive) cont.resume(Result.failure(t))
-                            }
-                        },
-                    )
-                    cont.invokeOnCancellation { ws.cancel() }
-                }
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
 
     /**
      * HTTP GET（如 `{base}/health`），响应码 2xx 视为成功。

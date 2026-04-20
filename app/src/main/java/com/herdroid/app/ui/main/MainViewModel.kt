@@ -93,7 +93,11 @@ class MainViewModel(
         viewModelScope.launch {
             val json = chatSessionRepository.messagesJsonFlow.first()
             if (!json.isNullOrBlank()) {
-                _resumeConversationPrompt.value = ResumeConversationPrompt(messagesJson = json)
+                val sid = chatSessionRepository.sessionIdFlow.first()
+                _resumeConversationPrompt.value = ResumeConversationPrompt(
+                    messagesJson = json,
+                    sessionId = sid,
+                )
             }
         }
     }
@@ -125,9 +129,7 @@ class MainViewModel(
         val p = _resumeConversationPrompt.value ?: return
         _resumeConversationPrompt.value = null
         _chatMessages.value = parseChatMessagesJson(p.messagesJson)
-        viewModelScope.launch {
-            conversationSessionId = chatSessionRepository.sessionIdFlow.first()
-        }
+        conversationSessionId = p.sessionId
     }
 
     /** 启动时放弃持久化记录，开始空会话。 */
@@ -147,109 +149,128 @@ class MainViewModel(
         resumeTtsIfPausedForImeAfterSend()
         val app = getApplication<Application>()
         viewModelScope.launch {
-            val prefs = settingsRepository.preferencesFlow.first()
-            val outcome = OpenAiChatFromSettings.prepareFromPreferences(prefs)
-            outcome.errorMessage(app)?.let {
-                _userMessage.value = it
-                return@launch
-            }
-            val prepared = (outcome as OpenAiChatFromSettings.PrepareOutcome.Ready).prepared
-            if (!app.hasActiveNetwork()) {
-                _userMessage.value = app.getString(R.string.test_feedback_network_unavailable)
-                return@launch
-            }
-
-            val nowMillis = System.currentTimeMillis()
-            val userMsg = ChatUiMessage(
-                id = ++chatMessageSeq,
-                role = ChatMessageRole.User,
-                text = trimmed,
-                userSendState = UserMessageSendState.Sending,
-                timeMillis = nowMillis,
-            )
-            val userMsgId = userMsg.id
-            val apiMessages = _chatMessages.value.map { m ->
-                when (m.role) {
-                    ChatMessageRole.User -> "user" to m.text
-                    ChatMessageRole.Assistant -> "assistant" to m.text
-                }
-            } + ("user" to trimmed)
-
-            val assistantMsg = ChatUiMessage(
-                id = ++chatMessageSeq,
-                role = ChatMessageRole.Assistant,
-                text = "",
-                replyComplete = false,
-                timeMillis = nowMillis,
-            )
-            val assistantMsgId = assistantMsg.id
-            _collapseExpandEpoch.update { it + 1 }
-            _chatMessages.update { it + userMsg + assistantMsg }
+            val prepared = prepareChatRequest(app) ?: return@launch
+            val pending = enqueuePendingMessages(trimmed)
 
             val result = OpenAiChatFromSettings.executeCompletionsStreaming(
                 chatClient,
                 prepared,
-                apiMessages,
+                pending.apiMessages,
             ) { delta ->
-                mainHandler.post {
-                    _chatMessages.update { list ->
-                        list.map { m ->
-                            if (m.id == assistantMsgId) {
-                                m.copy(text = m.text + delta, replyComplete = false)
-                            } else {
-                                m
-                            }
-                        }
-                    }
-                }
+                mainHandler.post { applyAssistantDelta(pending.assistantMsgId, delta) }
             }
 
             result.fold(
                 onSuccess = { fullReply ->
-                    _chatMessages.update { list ->
-                        list.map { m ->
-                            when (m.id) {
-                                userMsgId -> m.copy(userSendState = UserMessageSendState.Sent)
-                                assistantMsgId -> m.copy(text = fullReply, replyComplete = true)
-                                else -> m
-                            }
-                        }
-                    }
-                    val latestPrefs = settingsRepository.preferencesFlow.first()
-                    if (latestPrefs.autoPlayTts) {
-                        speakWithOptionalVolumeWarning(fullReply)
-                    }
-                    persistCurrentConversation()
+                    onChatSuccess(pending.userMsgId, pending.assistantMsgId, fullReply)
                 },
                 onFailure = { t ->
-                    _chatMessages.update { list ->
-                        val markedUser = list.map { m ->
-                            if (m.id == userMsgId) {
-                                m.copy(userSendState = UserMessageSendState.Failed)
-                            } else {
-                                m
-                            }
-                        }
-                        val asst = markedUser.find { it.id == assistantMsgId }
-                        if (asst == null || asst.text.isBlank()) {
-                            markedUser.filterNot { it.id == assistantMsgId }
-                        } else {
-                            markedUser.map { m ->
-                                if (m.id == assistantMsgId) {
-                                    m.copy(replyComplete = true)
-                                } else {
-                                    m
-                                }
-                            }
-                        }
-                    }
-                    _userMessage.value = app.getString(
-                        R.string.chat_request_failed,
-                        t.message ?: t.javaClass.simpleName,
-                    )
+                    onChatFailure(app, pending.userMsgId, pending.assistantMsgId, t)
                 },
             )
         }
+    }
+
+    private suspend fun prepareChatRequest(app: Application): OpenAiChatFromSettings.Prepared? {
+        val prefs = settingsRepository.preferencesFlow.first()
+        val outcome = OpenAiChatFromSettings.prepareFromPreferences(prefs)
+        outcome.errorMessage(app)?.let {
+            _userMessage.value = it
+            return null
+        }
+        if (!app.hasActiveNetwork()) {
+            _userMessage.value = app.getString(R.string.test_feedback_network_unavailable)
+            return null
+        }
+        return (outcome as OpenAiChatFromSettings.PrepareOutcome.Ready).prepared
+    }
+
+    private fun enqueuePendingMessages(trimmed: String): PendingChatRequest {
+        val nowMillis = System.currentTimeMillis()
+        val userMsg = ChatUiMessage(
+            id = ++chatMessageSeq,
+            role = ChatMessageRole.User,
+            text = trimmed,
+            userSendState = UserMessageSendState.Sending,
+            timeMillis = nowMillis,
+        )
+        val apiMessages = _chatMessages.value.map { m ->
+            when (m.role) {
+                ChatMessageRole.User -> "user" to m.text
+                ChatMessageRole.Assistant -> "assistant" to m.text
+            }
+        } + ("user" to trimmed)
+        val assistantMsg = ChatUiMessage(
+            id = ++chatMessageSeq,
+            role = ChatMessageRole.Assistant,
+            text = "",
+            replyComplete = false,
+            timeMillis = nowMillis,
+        )
+        _collapseExpandEpoch.update { it + 1 }
+        _chatMessages.update { it + userMsg + assistantMsg }
+        return PendingChatRequest(
+            userMsgId = userMsg.id,
+            assistantMsgId = assistantMsg.id,
+            apiMessages = apiMessages,
+        )
+    }
+
+    private fun applyAssistantDelta(assistantMsgId: Long, delta: String) {
+        _chatMessages.update { list ->
+            list.map { m ->
+                if (m.id == assistantMsgId) {
+                    m.copy(text = m.text + delta, replyComplete = false)
+                } else {
+                    m
+                }
+            }
+        }
+    }
+
+    private suspend fun onChatSuccess(userMsgId: Long, assistantMsgId: Long, fullReply: String) {
+        _chatMessages.update { list ->
+            list.map { m ->
+                when (m.id) {
+                    userMsgId -> m.copy(userSendState = UserMessageSendState.Sent)
+                    assistantMsgId -> m.copy(text = fullReply, replyComplete = true)
+                    else -> m
+                }
+            }
+        }
+        val latestPrefs = settingsRepository.preferencesFlow.first()
+        if (latestPrefs.autoPlayTts) {
+            speakWithOptionalVolumeWarning(fullReply)
+        }
+        persistCurrentConversation()
+    }
+
+    private fun onChatFailure(app: Application, userMsgId: Long, assistantMsgId: Long, t: Throwable) {
+        _chatMessages.update { list ->
+            val markedUser = list.map { m ->
+                if (m.id == userMsgId) {
+                    m.copy(userSendState = UserMessageSendState.Failed)
+                } else {
+                    m
+                }
+            }
+            val asst = markedUser.find { it.id == assistantMsgId }
+            if (asst == null || asst.text.isBlank()) {
+                markedUser.filterNot { it.id == assistantMsgId }
+            } else {
+                markedUser.map { m ->
+                    if (m.id == assistantMsgId) {
+                        m.copy(replyComplete = true)
+                    } else {
+                        m
+                    }
+                }
+            }
+        }
+        _userMessage.value = app.getString(
+            R.string.chat_request_failed,
+            t.message ?: t.javaClass.simpleName,
+        )
     }
 
     /** 长按菜单「朗读」：与自动朗读相同，含音量过低浮窗提示。 */
@@ -453,6 +474,7 @@ class MainViewModel(
 
 data class ResumeConversationPrompt(
     val messagesJson: String,
+    val sessionId: String?,
 )
 
 data class TtsLyricUiState(
@@ -462,4 +484,10 @@ data class TtsLyricUiState(
     val lineIndex: Int,
     val lineCount: Int,
     val isPaused: Boolean,
+)
+
+private data class PendingChatRequest(
+    val userMsgId: Long,
+    val assistantMsgId: Long,
+    val apiMessages: List<Pair<String, String>>,
 )
