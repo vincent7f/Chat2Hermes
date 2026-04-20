@@ -1,39 +1,38 @@
 # Herdroid
 
-**Herdroid** 是 Hermes Agent（文档内简称 **HA**）的 Android 客户端：在局域网内与 HA 建立连接，并通过 OpenAI 兼容 API 进行文本对话。
+**Herdroid** is an Android client for **Hermes Agent** (**HA** in docs): connect to HA on your LAN and chat via an OpenAI-compatible HTTP API.
 
-## 文档索引
+**Languages:** [简体中文 README](README.zh-CN.md)
 
-| 文档 | 说明 |
-|------|------|
-| [Features.md](Features.md) | 功能点清单（与代码、Release 对齐） |
-| [docs/Ideas.md](docs/Ideas.md) | 原始设想与目标 |
-| [docs/PRD.md](docs/PRD.md) | 产品需求与验收标准 |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构与模块划分 |
-| [docs/ANDROID_CONVENTIONS.md](docs/ANDROID_CONVENTIONS.md) | Android 工程与安全网络等约定 |
-| [docs/UI_UX.md](docs/UI_UX.md) | UI/UX 与无障碍 |
-| [docs/PRIVACY_AND_SECURITY.md](docs/PRIVACY_AND_SECURITY.md) | 隐私与安全 |
-| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | 构建、验证与 Git 工作流 |
-| [docs/HERMES_API_SERVER.md](docs/HERMES_API_SERVER.md) | Hermes API Server 官方说明与客户端约定（超时、鉴权等） |
+## Documentation index
 
-## 功能摘要
+| Document | Description |
+|----------|-------------|
+| [Features.md](Features.md) | Feature list (aligned with code and Release) |
+| [docs/Ideas.md](docs/Ideas.md) | Original ideas and goals |
+| [docs/PRD.md](docs/PRD.md) | Product requirements and acceptance |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Architecture and modules |
+| [docs/ANDROID_CONVENTIONS.md](docs/ANDROID_CONVENTIONS.md) | Android project and secure networking notes |
+| [docs/UI_UX.md](docs/UI_UX.md) | UI/UX and accessibility |
+| [docs/PRIVACY_AND_SECURITY.md](docs/PRIVACY_AND_SECURITY.md) | Privacy and security |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Build, verification, and Git workflow |
+| [docs/HERMES_API_SERVER.md](docs/HERMES_API_SERVER.md) | Hermes API Server notes for clients (timeouts, auth, etc.) |
 
-- 与同局域网内的 HA 保持实时连接（具体协议见 PRD 开放问题）。
-- 在设置中配置访问协议、主机地址、端口，以及 API Key、模型名（对话根地址由前三项自动拼接）。
-- 主界面多轮文本对话（`POST …/v1/chat/completions`，SSE 流式、`stream: true`）。
+## Features (summary)
 
-## 构建与验证
+- Configure scheme, host, port, API Key, and model name in Settings (chat base URL is built from the first three).
+- Multi-turn chat on the main screen (`POST …/v1/chat/completions`, SSE with `stream: true`).
 
-在项目根目录配置 `local.properties`（`sdk.dir` 指向本机 Android SDK），然后：
+## Build and verify
+
+Create `local.properties` in the project root (`sdk.dir` pointing to your Android SDK), then:
 
 ```powershell
 .\gradlew.bat lint assembleDebug
 ```
 
-构建完成后会生成默认包 `app/build/outputs/apk/debug/app-debug.apk`，并自动复制为带时间戳的 **`Herdroid-debug-<yyyyMMdd-HHmmss>.apk`**（同目录一份），以及 **`D:\BaiduSyncdisk\apk\Herdroid\`** 下一份。也可单独执行 `.\gradlew.bat archiveHerdroidDebugApk`。
+The default APK is `app/build/outputs/apk/debug/app-debug.apk`. The build may also copy a timestamped **`Herdroid-debug-<yyyyMMdd-HHmmss>.apk`** and archive per `archiveHerdroidDebugApk`. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-详见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
+## License
 
-## 许可
-
-待定（在添加 `LICENSE` 后更新本段）。
+This project is licensed under the **MIT License** — see [LICENSE](LICENSE).

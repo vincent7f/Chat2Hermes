@@ -86,7 +86,7 @@ Made-with: Cursor
 
 计划中；以下为 **v0.4.0** 修改清单（交付后将对应条目标为 `- [x]` 并补充实现 commit / PR）。标题前缀与 GitHub Issue 建议标题一致：`[doc]` 一条、`[feature]` 五条。
 
-- [ ] **\[doc]** 翻译英文 `README.md`，并作为默认入口；原中文说明保留为中文版；中英文两个 README 互相链接。
+- [x] **\[doc]** 翻译英文 `README.md`，并作为默认入口；原中文说明保留为中文版；中英文两个 README 互相链接。实现 commit：与 `[Cursor] docs: English default README` 同批提交。
 - [ ] **\[feature]** 支持多个设置文件（profile），用户可在不同 profile 间切换，便于对接不同 Hermes agent 实例。
 - [ ] **\[feature]** 折叠消息时：若原文长度与 trunk 后长度相同，则不必提供折叠态（不显示折叠）。
 - [ ] **\[feature]** 正在播放语音时若收到新的回复：将新回复的朗读加入**待播放队列**，当前段播完后再播下一段，直至队列为空。
