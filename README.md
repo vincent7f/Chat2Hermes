@@ -37,27 +37,11 @@ The default APK is `app/build/outputs/apk/debug/app-debug.apk`. The build may al
 
 If you want several Hermes profiles online at the same time, run one gateway per profile on different ports.
 
-### 1) Configure profile-specific API server values
-
-```bash
-# Profile: alice
-hermes -p alice config set API_SERVER_ENABLED true
-hermes -p alice config set API_SERVER_HOST 127.0.0.1
-hermes -p alice config set API_SERVER_PORT 8643
-hermes -p alice config set API_SERVER_KEY alice-secret
-
-# Profile: bob
-hermes -p bob config set API_SERVER_ENABLED true
-hermes -p bob config set API_SERVER_HOST 127.0.0.1
-hermes -p bob config set API_SERVER_PORT 8644
-hermes -p bob config set API_SERVER_KEY bob-secret
-```
-
-### 2) Add one LaunchDaemon plist per profile
+### 1) Add one LaunchDaemon plist per profile (no extra Hermes CLI config needed)
 
 Place plist files under `/Library/LaunchDaemons/` and keep owner/permission strict (`root:wheel`, `644`).
 
-Example: `/Library/LaunchDaemons/com.hermes.gateway.alice.plist`
+Example: `/Library/LaunchDaemons/com.hermes.gateway.alice.plist` (port/key are configured in `EnvironmentVariables`)
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -75,6 +59,18 @@ Example: `/Library/LaunchDaemons/com.hermes.gateway.alice.plist`
     <string>gateway</string>
   </array>
 
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>API_SERVER_ENABLED</key>
+    <string>true</string>
+    <key>API_SERVER_HOST</key>
+    <string>127.0.0.1</string>
+    <key>API_SERVER_PORT</key>
+    <string>8643</string>
+    <key>API_SERVER_KEY</key>
+    <string>alice-secret</string>
+  </dict>
+
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
@@ -91,18 +87,12 @@ Example: `/Library/LaunchDaemons/com.hermes.gateway.alice.plist`
 For another profile (for example `bob`), copy this file and change:
 - `Label` to `com.hermes.gateway.bob`
 - profile in `ProgramArguments` from `alice` to `bob`
+- port/API key in `EnvironmentVariables` (for example `API_SERVER_PORT=8644`)
 - log paths to `hermes-bob.*`
 
-### 3) Load and verify
+### 2) Activation
 
-```bash
-sudo chown root:wheel /Library/LaunchDaemons/com.hermes.gateway.alice.plist
-sudo chmod 644 /Library/LaunchDaemons/com.hermes.gateway.alice.plist
-sudo launchctl load -w /Library/LaunchDaemons/com.hermes.gateway.alice.plist
-
-# Verify gateway health
-curl -H "Authorization: Bearer alice-secret" http://127.0.0.1:8643/health
-```
+After saving plist files to `/Library/LaunchDaemons/`, they can take effect on reboot (`RunAtLoad`) or be loaded immediately via launchctl.
 
 Then point different app profiles in Chat2Hermes to different `host:port + API key` pairs.
 

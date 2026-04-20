@@ -37,27 +37,11 @@
 
 如果你希望多个 Hermes profile 同时在线，可以为每个 profile 启动一个 gateway，并使用不同端口。
 
-### 1）为每个 profile 配置独立 API Server 参数
-
-```bash
-# profile: alice
-hermes -p alice config set API_SERVER_ENABLED true
-hermes -p alice config set API_SERVER_HOST 127.0.0.1
-hermes -p alice config set API_SERVER_PORT 8643
-hermes -p alice config set API_SERVER_KEY alice-secret
-
-# profile: bob
-hermes -p bob config set API_SERVER_ENABLED true
-hermes -p bob config set API_SERVER_HOST 127.0.0.1
-hermes -p bob config set API_SERVER_PORT 8644
-hermes -p bob config set API_SERVER_KEY bob-secret
-```
-
-### 2）在 `/Library/LaunchDaemons/` 为每个 profile 新建 plist
+### 1）在 `/Library/LaunchDaemons/` 为每个 profile 新建 plist（无需额外 Hermes CLI 配置）
 
 每个 profile 一份 plist，放在 `/Library/LaunchDaemons/`，并确保权限为 `root:wheel`、`644`。
 
-示例：`/Library/LaunchDaemons/com.hermes.gateway.alice.plist`
+示例：`/Library/LaunchDaemons/com.hermes.gateway.alice.plist`（端口、Key 等都在 `EnvironmentVariables` 中配置）
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -75,6 +59,18 @@ hermes -p bob config set API_SERVER_KEY bob-secret
     <string>gateway</string>
   </array>
 
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>API_SERVER_ENABLED</key>
+    <string>true</string>
+    <key>API_SERVER_HOST</key>
+    <string>127.0.0.1</string>
+    <key>API_SERVER_PORT</key>
+    <string>8643</string>
+    <key>API_SERVER_KEY</key>
+    <string>alice-secret</string>
+  </dict>
+
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
@@ -91,18 +87,12 @@ hermes -p bob config set API_SERVER_KEY bob-secret
 新增 `bob` profile 时可复制上面的文件，并修改：
 - `Label` 改为 `com.hermes.gateway.bob`
 - `ProgramArguments` 内 profile 从 `alice` 改为 `bob`
+- `EnvironmentVariables` 中端口（如 `8644`）与 `API_SERVER_KEY` 改为 bob 对应值
 - 日志路径改为 `hermes-bob.*`
 
-### 3）加载并验证
+### 2）启用方式
 
-```bash
-sudo chown root:wheel /Library/LaunchDaemons/com.hermes.gateway.alice.plist
-sudo chmod 644 /Library/LaunchDaemons/com.hermes.gateway.alice.plist
-sudo launchctl load -w /Library/LaunchDaemons/com.hermes.gateway.alice.plist
-
-# 验证服务健康状态
-curl -H "Authorization: Bearer alice-secret" http://127.0.0.1:8643/health
-```
+将 plist 保存到 `/Library/LaunchDaemons/` 后，可通过系统重启（`RunAtLoad`）或使用 launchctl 立即生效。
 
 最后在 Chat2Hermes 中创建多个连接 profile，分别填入对应的 `host:port + API Key` 即可动态切换后端 profile。
 
