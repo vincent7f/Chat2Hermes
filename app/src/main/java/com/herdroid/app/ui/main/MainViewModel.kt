@@ -116,6 +116,7 @@ class MainViewModel(
     }
 
     fun clearChat() {
+        dismissTtsLyric()
         conversationSessionId = null
         chatMessageSeq = 0L
         _chatMessages.value = emptyList()
@@ -217,26 +218,15 @@ class MainViewModel(
     }
 
     private fun applyAssistantDelta(assistantMsgId: Long, delta: String) {
-        _chatMessages.update { list ->
-            list.map { m ->
-                if (m.id == assistantMsgId) {
-                    m.copy(text = m.text + delta, replyComplete = false)
-                } else {
-                    m
-                }
-            }
+        updateMessageById(assistantMsgId) { m ->
+            m.copy(text = m.text + delta, replyComplete = false)
         }
     }
 
     private suspend fun onChatSuccess(userMsgId: Long, assistantMsgId: Long, fullReply: String) {
-        _chatMessages.update { list ->
-            list.map { m ->
-                when (m.id) {
-                    userMsgId -> m.copy(userSendState = UserMessageSendState.Sent)
-                    assistantMsgId -> m.copy(text = fullReply, replyComplete = true)
-                    else -> m
-                }
-            }
+        updateMessageById(userMsgId) { m -> m.copy(userSendState = UserMessageSendState.Sent) }
+        updateMessageById(assistantMsgId) { m ->
+            m.copy(text = fullReply, replyComplete = true)
         }
         val latestPrefs = settingsRepository.preferencesFlow.first()
         if (latestPrefs.autoPlayTts) {
@@ -248,22 +238,14 @@ class MainViewModel(
     private fun onChatFailure(app: Application, userMsgId: Long, assistantMsgId: Long, t: Throwable) {
         _chatMessages.update { list ->
             val markedUser = list.map { m ->
-                if (m.id == userMsgId) {
-                    m.copy(userSendState = UserMessageSendState.Failed)
-                } else {
-                    m
-                }
+                if (m.id == userMsgId) m.copy(userSendState = UserMessageSendState.Failed) else m
             }
             val asst = markedUser.find { it.id == assistantMsgId }
             if (asst == null || asst.text.isBlank()) {
                 markedUser.filterNot { it.id == assistantMsgId }
             } else {
                 markedUser.map { m ->
-                    if (m.id == assistantMsgId) {
-                        m.copy(replyComplete = true)
-                    } else {
-                        m
-                    }
+                    if (m.id == assistantMsgId) m.copy(replyComplete = true) else m
                 }
             }
         }
@@ -271,6 +253,14 @@ class MainViewModel(
             R.string.chat_request_failed,
             t.message ?: t.javaClass.simpleName,
         )
+    }
+
+    private fun updateMessageById(messageId: Long, transform: (ChatUiMessage) -> ChatUiMessage) {
+        _chatMessages.update { list ->
+            list.map { m ->
+                if (m.id == messageId) transform(m) else m
+            }
+        }
     }
 
     /** 长按菜单「朗读」：与自动朗读相同，含音量过低浮窗提示。 */
