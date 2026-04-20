@@ -1,5 +1,5 @@
 ---
-name: herdroid-release-and-apk
+name: herdroid-release-apk
 description: Updates Herdroid Release.md (especially the v0.3.0 checklist) to record shipped features and commit references, then runs a full debug APK build. Use when finishing features in this repo, when the user asks to sync Release notes with code changes, or when combining release documentation with assembleDebug verification.
 ---
 
