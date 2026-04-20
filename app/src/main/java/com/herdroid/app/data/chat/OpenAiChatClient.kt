@@ -64,10 +64,22 @@ class OpenAiChatClient(private val httpClient: OkHttpClient) {
                     val detail = parseErrorMessage(errBody) ?: errBody.ifEmpty { "HTTP ${resp.code}" }
                     return Result.failure(RuntimeException(detail))
                 }
-                readChatCompletionSse(resp, onContentDelta)
+                readChatCompletion(resp, onContentDelta)
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    private fun readChatCompletion(
+        response: Response,
+        onContentDelta: (String) -> Unit,
+    ): Result<String> {
+        val ct = response.header("Content-Type").orEmpty().lowercase()
+        return if (ct.contains("text/event-stream")) {
+            readChatCompletionSse(response, onContentDelta)
+        } else {
+            readChatCompletionJson(response, onContentDelta)
         }
     }
 
@@ -101,6 +113,39 @@ class OpenAiChatClient(private val httpClient: OkHttpClient) {
             return Result.failure(RuntimeException("empty response stream"))
         }
         return Result.success(full)
+    }
+
+    private fun readChatCompletionJson(
+        response: Response,
+        onContentDelta: (String) -> Unit,
+    ): Result<String> {
+        val raw = response.body?.string().orEmpty()
+        if (raw.isEmpty()) return Result.failure(RuntimeException("empty body"))
+        return try {
+            val root = JSONObject(raw)
+            root.optJSONObject("error")?.let { err ->
+                val msg = err.optString("message").ifEmpty { err.toString() }
+                return Result.failure(RuntimeException(msg))
+            }
+            val choices = root.optJSONArray("choices")
+                ?: return Result.failure(RuntimeException("missing choices"))
+            val first = choices.optJSONObject(0)
+                ?: return Result.failure(RuntimeException("missing first choice"))
+            val text = first
+                .optJSONObject("message")
+                ?.optString("content", "")
+                .orEmpty()
+                .ifEmpty {
+                    first.optJSONObject("delta")?.optString("content", "").orEmpty()
+                }
+            if (text.isEmpty()) {
+                return Result.failure(RuntimeException("empty completion content"))
+            }
+            onContentDelta(text)
+            Result.success(text)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     private fun parseSseJsonLine(raw: String): SseChunk {
