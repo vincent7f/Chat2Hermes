@@ -59,6 +59,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.markdownRendererAndroid)
     implementation(libs.markdownRendererM3)
+    testImplementation(libs.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
 

@@ -93,4 +93,22 @@ object OpenAiChatFromSettings {
             onContentDelta = onContentDelta,
         )
     }
+
+    /**
+     * Runs API：先创建 run，再订阅 `/events`，适合长耗时会话（可重连/续订阅）。
+     */
+    suspend fun executeRunsStreaming(
+        client: HermesRunsClient,
+        prepared: Prepared,
+        messages: List<Pair<String, String>>,
+        onContentDelta: (String) -> Unit,
+    ): Result<String> = withContext(Dispatchers.IO) {
+        client.runAndCollectText(
+            baseUrl = prepared.baseUrl,
+            apiKey = prepared.apiKey,
+            model = prepared.model,
+            messages = messages,
+            onContentDelta = onContentDelta,
+        )
+    }
 }

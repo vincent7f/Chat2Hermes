@@ -16,7 +16,7 @@ class MainViewModelFactory(
                 application,
                 app.settingsRepository,
                 app.chatSessionRepository,
-                app.openAiChatClient,
+                app.hermesRunsClient,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel: ${modelClass.name}")

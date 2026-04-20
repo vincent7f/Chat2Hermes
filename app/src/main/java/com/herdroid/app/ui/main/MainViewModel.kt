@@ -10,7 +10,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.herdroid.app.R
 import com.herdroid.app.data.chat.ChatSessionRepository
-import com.herdroid.app.data.chat.OpenAiChatClient
+import com.herdroid.app.data.chat.HermesRunsClient
 import com.herdroid.app.data.chat.OpenAiChatFromSettings
 import com.herdroid.app.data.settings.SettingsRepository
 import com.herdroid.app.data.settings.UserPreferences
@@ -40,7 +40,7 @@ class MainViewModel(
     application: Application,
     private val settingsRepository: SettingsRepository,
     private val chatSessionRepository: ChatSessionRepository,
-    private val chatClient: OpenAiChatClient,
+    private val runsClient: HermesRunsClient,
 ) : AndroidViewModel(application) {
 
     private val ttsSpeaker = SystemTtsSpeaker(application)
@@ -153,8 +153,8 @@ class MainViewModel(
             val prepared = prepareChatRequest(app) ?: return@launch
             val pending = enqueuePendingMessages(trimmed)
 
-            val result = OpenAiChatFromSettings.executeCompletionsStreaming(
-                chatClient,
+            val result = OpenAiChatFromSettings.executeRunsStreaming(
+                runsClient,
                 prepared,
                 pending.apiMessages,
             ) { delta ->

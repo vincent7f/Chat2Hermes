@@ -3,6 +3,7 @@ package com.herdroid.app
 import android.app.Application
 import com.herdroid.app.data.chat.ChatSessionRepository
 import com.herdroid.app.data.chat.OpenAiChatClient
+import com.herdroid.app.data.chat.HermesRunsClient
 import com.herdroid.app.data.settings.SettingsRepository
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
@@ -31,6 +32,8 @@ class HerdroidApplication : Application() {
 
     /** 主界面与设置页 Hermes 对话共用；使用为本客户端单独配置的较长读超时。 */
     val openAiChatClient: OpenAiChatClient by lazy { OpenAiChatClient(chatCompletionsHttpClient) }
+    /** 主界面长会话优先使用 Runs API。 */
+    val hermesRunsClient: HermesRunsClient by lazy { HermesRunsClient(chatCompletionsHttpClient) }
 
     lateinit var settingsRepository: SettingsRepository
         private set
