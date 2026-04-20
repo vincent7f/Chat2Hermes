@@ -102,6 +102,7 @@ object OpenAiChatFromSettings {
         prepared: Prepared,
         messages: List<Pair<String, String>>,
         onContentDelta: (String) -> Unit,
+        onReconnect: (attempt: Int) -> Unit = {},
     ): Result<String> = withContext(Dispatchers.IO) {
         client.runAndCollectText(
             baseUrl = prepared.baseUrl,
@@ -109,6 +110,7 @@ object OpenAiChatFromSettings {
             model = prepared.model,
             messages = messages,
             onContentDelta = onContentDelta,
+            onReconnect = onReconnect,
         )
     }
 }

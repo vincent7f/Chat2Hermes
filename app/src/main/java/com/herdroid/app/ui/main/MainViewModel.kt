@@ -154,12 +154,18 @@ class MainViewModel(
             val pending = enqueuePendingMessages(trimmed)
 
             val result = OpenAiChatFromSettings.executeRunsStreaming(
-                runsClient,
-                prepared,
-                pending.apiMessages,
-            ) { delta ->
-                mainHandler.post { applyAssistantDelta(pending.assistantMsgId, delta) }
-            }
+                client = runsClient,
+                prepared = prepared,
+                messages = pending.apiMessages,
+                onContentDelta = { delta ->
+                    mainHandler.post { applyAssistantDelta(pending.assistantMsgId, delta) }
+                },
+                onReconnect = {
+                    mainHandler.post {
+                        _userMessage.value = app.getString(R.string.chat_reconnected_receiving)
+                    }
+                },
+            )
 
             result.fold(
                 onSuccess = { fullReply ->

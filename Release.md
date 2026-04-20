@@ -93,6 +93,7 @@ Made-with: Cursor
 - [x] **\[feature]** 梳理并加固现有逻辑：播放语音期间若用户切换到输入法，则暂停播放；在消息已发送或用户退出输入法后，再继续播放。实现 commit：（与 `[Cursor] feat(main): IME visibility pauses TTS` 同批提交）
 - [x] **\[feature]** 每次发送或收到消息后记录当前对话的 session id，以便下次继续同一对话；下次启动 app 时询问用户是**继续上次对话**还是**开启新对话**。实现 commit：（与 `[Cursor] feat(chat): persist session and resume prompt` 同批提交）
 - [x] **\[feature]** 长耗时会话改为 Runs API：发送时先创建 `run_id` 再订阅 `/v1/runs/{run_id}/events`，避免单次 `chat/completions` 长连接在 10+ 分钟场景下更易断连；并兼容解析 chat-completions / responses 两类增量事件。实现 commit：（与 `[Cursor] feat(chat): switch main conversation to Hermes Runs API` 同批提交）
+- [x] **\[feature]** Runs 长会话断线自动重连：在同一 `run_id` 上自动续订阅事件流，新增重连提示文案「连接已恢复，继续接收中…」，并对重连回放增量去重以避免重复字符。实现 commit：（与 `[Cursor] feat(chat): reconnect runs stream on disconnect` 同批提交）
 
 ---
 
