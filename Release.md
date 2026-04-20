@@ -87,11 +87,11 @@ Made-with: Cursor
 计划中；以下为 **v0.4.0** 修改清单（交付后将对应条目标为 `- [x]` 并补充实现 commit / PR）。标题前缀与 GitHub Issue 建议标题一致：`[doc]` 一条、`[feature]` 五条。
 
 - [x] **\[doc]** 翻译英文 `README.md`，并作为默认入口；原中文说明保留为中文版；中英文两个 README 互相链接。实现 commit：与 `[Cursor] docs: English default README` 同批提交。
-- [ ] **\[feature]** 支持多个设置文件（profile），用户可在不同 profile 间切换，便于对接不同 Hermes agent 实例。
+- [x] **\[feature]** 支持多个设置文件（profile），用户可在不同 profile 间切换，便于对接不同 Hermes agent 实例。实现 commit：（与 `[Cursor] feat(settings): per-profile DataStore keys` 同批提交）
 - [x] **\[feature]** 折叠消息时：若原文长度与 trunk 后长度相同，则不必提供折叠态（不显示折叠）。实现 commit：（与 `[Cursor] ui(chat): skip fold when preview equals full text` 同批提交）
 - [x] **\[feature]** 正在播放语音时若收到新的回复：将新回复的朗读加入**待播放队列**，当前段播完后再播下一段，直至队列为空。实现 commit：（与 `[Cursor] feat(tts): queue speak requests while playing` 同批提交）
-- [ ] **\[feature]** 梳理并加固现有逻辑：播放语音期间若用户切换到输入法，则暂停播放；在消息已发送或用户退出输入法后，再继续播放。
-- [ ] **\[feature]** 每次发送或收到消息后记录当前对话的 session id，以便下次继续同一对话；下次启动 app 时询问用户是**继续上次对话**还是**开启新对话**。
+- [x] **\[feature]** 梳理并加固现有逻辑：播放语音期间若用户切换到输入法，则暂停播放；在消息已发送或用户退出输入法后，再继续播放。实现 commit：（与 `[Cursor] feat(main): IME visibility pauses TTS` 同批提交）
+- [x] **\[feature]** 每次发送或收到消息后记录当前对话的 session id，以便下次继续同一对话；下次启动 app 时询问用户是**继续上次对话**还是**开启新对话**。实现 commit：（与 `[Cursor] feat(chat): persist session and resume prompt` 同批提交）
 
 ---
 

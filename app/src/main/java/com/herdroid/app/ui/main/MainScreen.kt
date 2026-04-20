@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
@@ -73,6 +75,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -106,6 +109,7 @@ fun MainScreen(
     val chatMessages by viewModel.chatMessages.collectAsState()
     val prefs by viewModel.preferences.collectAsStateWithLifecycle(initialValue = UserPreferences.DEFAULT)
     val collapseExpandEpoch by viewModel.collapseExpandEpoch.collectAsStateWithLifecycle()
+    val resumeConversationPrompt by viewModel.resumeConversationPrompt.collectAsStateWithLifecycle()
     val cdAutoPlayTts = stringResource(R.string.cd_auto_play_tts)
     val cdChatNew = stringResource(R.string.cd_chat_new)
 
@@ -125,6 +129,12 @@ fun MainScreen(
 
     LaunchedEffect(Unit) {
         ViewCompat.requestApplyInsets(rootView.rootView)
+    }
+
+    val density = LocalDensity.current
+    val imeBottomPx = WindowInsets.ime.getBottom(density)
+    LaunchedEffect(imeBottomPx) {
+        viewModel.onImeVisibilityChanged(imeBottomPx > 0)
     }
 
     LaunchedEffect(
@@ -147,6 +157,23 @@ fun MainScreen(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
+        if (resumeConversationPrompt != null) {
+            AlertDialog(
+                onDismissRequest = { viewModel.discardPersistedAndStartNew() },
+                title = { Text(stringResource(R.string.resume_conversation_title)) },
+                text = { Text(stringResource(R.string.resume_conversation_body)) },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.continuePersistedConversation() }) {
+                        Text(stringResource(R.string.resume_conversation_continue))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.discardPersistedAndStartNew() }) {
+                        Text(stringResource(R.string.resume_conversation_new))
+                    }
+                },
+            )
+        }
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {

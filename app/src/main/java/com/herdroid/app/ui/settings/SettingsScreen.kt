@@ -2,6 +2,7 @@ package com.herdroid.app.ui.settings
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +18,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -84,6 +87,12 @@ fun SettingsScreen(
     var modelName by remember { mutableStateOf(prefs.modelName) }
     var portError by remember { mutableStateOf<String?>(null) }
 
+    val activeProfileId by repository.activeProfileId.collectAsStateWithLifecycle(initialValue = "default")
+    val profileIds by repository.profileIds.collectAsStateWithLifecycle(initialValue = listOf("default"))
+    var profileMenuExpanded by remember { mutableStateOf(false) }
+    var addProfileDialogVisible by remember { mutableStateOf(false) }
+    var newProfileName by remember { mutableStateOf("") }
+
     LaunchedEffect(prefs) {
         scheme = normalizeScheme(prefs.scheme)
         host = prefs.host
@@ -127,6 +136,85 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_profile_label),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_profile_current, activeProfileId),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
+                    TextButton(onClick = { profileMenuExpanded = true }) {
+                        Text(stringResource(R.string.settings_profile_switch))
+                    }
+                }
+                DropdownMenu(
+                    expanded = profileMenuExpanded,
+                    onDismissRequest = { profileMenuExpanded = false },
+                ) {
+                    profileIds.forEach { id ->
+                        DropdownMenuItem(
+                            text = { Text(id) },
+                            onClick = {
+                                viewModel.switchProfile(id)
+                                profileMenuExpanded = false
+                            },
+                        )
+                    }
+                }
+            }
+            OutlinedButton(
+                onClick = {
+                    newProfileName = ""
+                    addProfileDialogVisible = true
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.settings_profile_add))
+            }
+            if (addProfileDialogVisible) {
+                AlertDialog(
+                    onDismissRequest = { addProfileDialogVisible = false },
+                    title = { Text(stringResource(R.string.settings_profile_add)) },
+                    text = {
+                        OutlinedTextField(
+                            value = newProfileName,
+                            onValueChange = { newProfileName = it },
+                            label = { Text(stringResource(R.string.settings_profile_add_hint)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                val name = newProfileName
+                                addProfileDialogVisible = false
+                                newProfileName = ""
+                                viewModel.addProfile(name) { }
+                            },
+                        ) {
+                            Text(stringResource(R.string.settings_profile_add_confirm))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { addProfileDialogVisible = false }) {
+                            Text(stringResource(R.string.settings_profile_add_cancel))
+                        }
+                    },
+                )
+            }
             Surface(
                 onClick = { schemePickerVisible = true },
                 modifier = Modifier.fillMaxWidth(),

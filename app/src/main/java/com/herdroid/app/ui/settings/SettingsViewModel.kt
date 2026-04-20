@@ -38,6 +38,19 @@ class SettingsViewModel(
         _userMessage.value = null
     }
 
+    fun switchProfile(profileId: String) {
+        viewModelScope.launch {
+            runCatching { repository.setActiveProfile(profileId) }
+        }
+    }
+
+    fun addProfile(rawName: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val id = repository.addProfile(rawName)
+            onResult(id != null)
+        }
+    }
+
     /** 必须 await 完成后再离开设置页，否则主界面会读到未落盘的旧 API Key。 */
     suspend fun save(
         scheme: String,

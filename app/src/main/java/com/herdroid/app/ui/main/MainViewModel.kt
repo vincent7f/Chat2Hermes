@@ -9,6 +9,7 @@ import android.os.Looper
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.herdroid.app.R
+import com.herdroid.app.data.chat.ChatSessionRepository
 import com.herdroid.app.data.chat.OpenAiChatClient
 import com.herdroid.app.data.chat.OpenAiChatFromSettings
 import com.herdroid.app.data.settings.SettingsRepository
@@ -30,11 +31,15 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.ArrayDeque
+import java.util.UUID
+import org.json.JSONArray
+import org.json.JSONObject
 
 /** 主界面 Hermes 对话；可选在收到助手回复后用系统 TTS 朗读。 */
 class MainViewModel(
     application: Application,
     private val settingsRepository: SettingsRepository,
+    private val chatSessionRepository: ChatSessionRepository,
     private val chatClient: OpenAiChatClient,
 ) : AndroidViewModel(application) {
 
@@ -66,10 +71,32 @@ class MainViewModel(
     private val ttsSpeakQueue = ArrayDeque<String>()
     private var ttsQueuePlaybackActive = false
 
+    /** 因输入法打开而暂停朗读；关闭 IME 或发送消息后恢复。 */
+    private var ttsPausedForIme = false
+
     private var chatMessageSeq = 0L
+
+    /** 客户端生成的对话会话 id，随 [persistCurrentConversation] 写入本地。 */
+    private var conversationSessionId: String? = null
 
     private val _chatMessages = MutableStateFlow<List<ChatUiMessage>>(emptyList())
     val chatMessages: StateFlow<List<ChatUiMessage>> = _chatMessages.asStateFlow()
+
+    /**
+     * 若存在上次持久化的消息，则非 `null`，主界面展示「继续 / 新对话」。
+     */
+    private val _resumeConversationPrompt = MutableStateFlow<ResumeConversationPrompt?>(null)
+    val resumeConversationPrompt: StateFlow<ResumeConversationPrompt?> =
+        _resumeConversationPrompt.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            val json = chatSessionRepository.messagesJsonFlow.first()
+            if (!json.isNullOrBlank()) {
+                _resumeConversationPrompt.value = ResumeConversationPrompt(messagesJson = json)
+            }
+        }
+    }
 
     /**
      * 每次成功发起一轮新发送（用户消息 + 占位助手消息入列）时递增；
@@ -85,12 +112,39 @@ class MainViewModel(
     }
 
     fun clearChat() {
+        conversationSessionId = null
+        chatMessageSeq = 0L
         _chatMessages.value = emptyList()
+        viewModelScope.launch {
+            chatSessionRepository.clearPersistedConversation()
+        }
+    }
+
+    /** 启动时选择继续上次已持久化的会话。 */
+    fun continuePersistedConversation() {
+        val p = _resumeConversationPrompt.value ?: return
+        _resumeConversationPrompt.value = null
+        _chatMessages.value = parseChatMessagesJson(p.messagesJson)
+        viewModelScope.launch {
+            conversationSessionId = chatSessionRepository.sessionIdFlow.first()
+        }
+    }
+
+    /** 启动时放弃持久化记录，开始空会话。 */
+    fun discardPersistedAndStartNew() {
+        _resumeConversationPrompt.value = null
+        conversationSessionId = null
+        chatMessageSeq = 0L
+        _chatMessages.value = emptyList()
+        viewModelScope.launch {
+            chatSessionRepository.clearPersistedConversation()
+        }
     }
 
     fun sendChatMessage(userText: String) {
         val trimmed = userText.trim()
         if (trimmed.isEmpty()) return
+        resumeTtsIfPausedForImeAfterSend()
         val app = getApplication<Application>()
         viewModelScope.launch {
             val prefs = settingsRepository.preferencesFlow.first()
@@ -165,6 +219,7 @@ class MainViewModel(
                     if (latestPrefs.autoPlayTts) {
                         speakWithOptionalVolumeWarning(fullReply)
                     }
+                    persistCurrentConversation()
                 },
                 onFailure = { t ->
                     _chatMessages.update { list ->
@@ -272,7 +327,36 @@ class MainViewModel(
         _ttsLyric.update { it?.copy(isPaused = false) }
     }
 
+    /**
+     * 主界面观察 [WindowInsets.ime]：IME 显示且正在/排队朗读时暂停；IME 隐藏后恢复。
+     */
+    fun onImeVisibilityChanged(imeVisible: Boolean) {
+        if (!imeVisible) {
+            if (ttsPausedForIme) {
+                ttsPausedForIme = false
+                resumeTtsLyric()
+            }
+            return
+        }
+        val playingOrQueued =
+            ttsQueuePlaybackActive || ttsSpeakQueue.isNotEmpty() || _ttsLyric.value != null
+        if (!playingOrQueued) return
+        val alreadyPaused = _ttsLyric.value?.isPaused == true
+        if (!alreadyPaused) {
+            pauseTtsLyric()
+            ttsPausedForIme = true
+        }
+    }
+
+    private fun resumeTtsIfPausedForImeAfterSend() {
+        if (ttsPausedForIme) {
+            ttsPausedForIme = false
+            resumeTtsLyric()
+        }
+    }
+
     fun dismissTtsLyric() {
+        ttsPausedForIme = false
         ttsSpeakQueue.clear()
         ttsQueuePlaybackActive = false
         ttsSpeaker.stopLyricPlayback()
@@ -298,10 +382,78 @@ class MainViewModel(
         super.onCleared()
     }
 
+    private fun persistCurrentConversation() {
+        viewModelScope.launch {
+            val list = _chatMessages.value
+            if (list.isEmpty()) return@launch
+            val sid = conversationSessionId ?: UUID.randomUUID().toString().also {
+                conversationSessionId = it
+            }
+            chatSessionRepository.persistConversation(sid, chatMessagesToJson(list))
+        }
+    }
+
+    private fun chatMessagesToJson(list: List<ChatUiMessage>): String {
+        val arr = JSONArray()
+        for (m in list) {
+            val o = JSONObject()
+            o.put("id", m.id)
+            o.put("role", if (m.role == ChatMessageRole.User) "user" else "assistant")
+            o.put("text", m.text)
+            o.put("replyComplete", m.replyComplete)
+            o.put("timeMillis", m.timeMillis)
+            when (m.userSendState) {
+                UserMessageSendState.Sending -> o.put("userSendState", "sending")
+                UserMessageSendState.Sent -> o.put("userSendState", "sent")
+                UserMessageSendState.Failed -> o.put("userSendState", "failed")
+                null -> o.put("userSendState", JSONObject.NULL)
+            }
+            arr.put(o)
+        }
+        return arr.toString()
+    }
+
+    private fun parseChatMessagesJson(json: String): List<ChatUiMessage> {
+        val arr = JSONArray(json)
+        val out = ArrayList<ChatUiMessage>(arr.length())
+        var maxId = 0L
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            val id = o.optLong("id", (i + 1).toLong())
+            maxId = maxOf(maxId, id)
+            val role = when (o.optString("role", "user")) {
+                "assistant" -> ChatMessageRole.Assistant
+                else -> ChatMessageRole.User
+            }
+            val us = when (o.optString("userSendState", "")) {
+                "sending" -> UserMessageSendState.Sending
+                "sent" -> UserMessageSendState.Sent
+                "failed" -> UserMessageSendState.Failed
+                else -> null
+            }
+            out.add(
+                ChatUiMessage(
+                    id = id,
+                    role = role,
+                    text = o.optString("text", ""),
+                    userSendState = us,
+                    replyComplete = o.optBoolean("replyComplete", true),
+                    timeMillis = o.optLong("timeMillis", System.currentTimeMillis()),
+                ),
+            )
+        }
+        chatMessageSeq = maxId
+        return out
+    }
+
     companion object {
         private const val VOLUME_WARNING_MS = 5_000L
     }
 }
+
+data class ResumeConversationPrompt(
+    val messagesJson: String,
+)
 
 data class TtsLyricUiState(
     val previousLine: String,

@@ -1,8 +1,10 @@
 package com.herdroid.app
 
 import android.app.Application
+import com.herdroid.app.data.chat.ChatSessionRepository
 import com.herdroid.app.data.chat.OpenAiChatClient
 import com.herdroid.app.data.settings.SettingsRepository
+import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
@@ -33,9 +35,14 @@ class HerdroidApplication : Application() {
     lateinit var settingsRepository: SettingsRepository
         private set
 
+    lateinit var chatSessionRepository: ChatSessionRepository
+        private set
+
     override fun onCreate() {
         super.onCreate()
         settingsRepository = SettingsRepository(this)
+        runBlocking { settingsRepository.migrateFromLegacyIfNeeded() }
+        chatSessionRepository = ChatSessionRepository(this)
     }
 
     private companion object {

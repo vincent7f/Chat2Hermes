@@ -18,6 +18,10 @@
     <string name="chat_need_base_url">请先在设置中填写有效的访问协议、地址与端口</string>
     <string name="chat_request_failed">对话请求失败：%1$s</string>
     <string name="cd_send_chat">发送</string>
+    <string name="resume_conversation_title">继续上次对话？</string>
+    <string name="resume_conversation_body">检测到上次未清空的会话记录。可选择继续上次的对话，或开始全新会话。</string>
+    <string name="resume_conversation_continue">继续上次</string>
+    <string name="resume_conversation_new">开启新对话</string>
     <string name="chat_new_chat">新对话</string>
     <string name="cd_chat_new">开始新对话，清空当前会话</string>
     <string name="chat_streaming_receiving">【接收中】已经接收%1$d字符</string>
@@ -41,6 +45,13 @@
     <string name="status_connected">已连接</string>
     <string name="status_error">错误：%1$s</string>
     <string name="settings_title">设置</string>
+    <string name="settings_profile_label">连接配置（profile）</string>
+    <string name="settings_profile_current">当前：%1$s</string>
+    <string name="settings_profile_switch">切换</string>
+    <string name="settings_profile_add">新建 profile</string>
+    <string name="settings_profile_add_hint">名称（字母数字，用于区分不同 Hermes 实例）</string>
+    <string name="settings_profile_add_confirm">创建</string>
+    <string name="settings_profile_add_cancel">取消</string>
     <string name="cd_back">返回</string>
     <string name="scheme_label">访问协议</string>
     <string name="host_label">地址（IP 或主机名）</string>
