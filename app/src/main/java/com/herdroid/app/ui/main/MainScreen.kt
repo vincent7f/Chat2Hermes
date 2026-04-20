@@ -591,11 +591,15 @@ private fun MessageBubbleWithMenu(
             collapseWhenAutoTts &&
             message.text.isNotEmpty()
 
-    val shouldFold = shouldFoldAssistant || shouldFoldUser
-
     val previewPrefix = remember(message.id, message.text) {
         collapsedPrefixPreview(message.text)
     }
+    val trimmedBody = message.text.trim()
+    /** 折叠预览与全文一致时无需折叠态（避免「展开」无意义）。 */
+    val previewSameAsFull = previewPrefix == trimmedBody
+
+    val shouldFold =
+        (shouldFoldAssistant || shouldFoldUser) && !previewSameAsFull
     val cdCollapsed = stringResource(R.string.cd_chat_collapsed_row)
 
     var replyExpanded by remember(message.id) { mutableStateOf(true) }
