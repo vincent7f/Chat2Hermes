@@ -1,6 +1,6 @@
 ---
 name: create-github-issue
-description: Turns each line of user-supplied text into one GitHub issue on the repo remote, normalizing bodies and grouping issue titles by similar line prefixes (brackets, keywords, list markers). Also appends each item to the latest version section in repo-root Release.md as planned release changes (checkbox bullets). Use when the user pastes a multi-line backlog, wants issues filed from lines, or wants Release.md kept in sync with new backlog items.
+description: Turns each line of user-supplied text into one GitHub issue on the repo remote, normalizing bodies and grouping issue titles by similar line prefixes (brackets, keywords, list markers). Appends each item to the latest Release.md version section and records each new issue number and URL on that bullet for tracking. Use when the user pastes a multi-line backlog, wants issues filed from lines, or wants Release.md kept in sync with backlog items and GitHub issue links.
 ---
 
 # Create GitHub issues from line-oriented text
@@ -69,9 +69,32 @@ After normalizing lines (and **in addition to** creating issues), update **`Rele
 - **Do not** duplicate: if a bullet with the same meaning is already present, skip or merge; prefer matching the repo’s existing `Release.md` tone (see `v0.3.0` / `v0.4.0` examples).
 - Order: append **below** existing `- [ ]` / `- [x]` items in that version’s list unless the user asks otherwise.
 
-### Issue cross-links (optional)
+### Issue ID and link on each bullet (required when creation succeeds)
 
-When `gh issue create` (or API) **succeeds**, optionally append a short reference on the same bullet, e.g. `（跟踪：#12）` or a markdown link to the issue. If issue creation **fails**, still add the `- [ ]` line to `Release.md` and note the permission error for the user.
+When an issue is **created successfully**, the matching `Release.md` bullet **must** include **both**:
+
+1. **Issue number** (e.g. `#12`).
+2. **Full GitHub issue URL** (HTTPS), as a **markdown link** so readers can open it in one click.
+
+**Recommended format** (pick one style and use it consistently within the same batch):
+
+```markdown
+- [ ] **\[feature]** 简短描述。跟踪：[#12](https://github.com/OWNER/REPO/issues/12)
+```
+
+or suffix form:
+
+```markdown
+- [ ] **\[feature]** 简短描述（[#12](https://github.com/OWNER/REPO/issues/12)）
+```
+
+- Parse **`owner/repo`** from `git remote get-url origin` to build `https://github.com/OWNER/REPO/issues/N` if the CLI only returns `#N`.
+- Prefer capturing **`number`** and **`url`** from `gh issue create --json number,url` (or the API response) so the link is exact.
+- **After** all issues are created, edit **`Release.md`** in one pass so every new bullet lines up with its issue **ID + link** (avoid mismatches between rows and issue numbers).
+
+### When issue creation fails
+
+If `gh` / API **cannot** create an issue, still add the `- [ ]` bullet **without** a link and add a one-line note for the user (e.g. token scope). Do **not** invent fake IDs or URLs.
 
 ### Git
 
@@ -94,8 +117,8 @@ When `gh issue create` (or API) **succeeds**, optionally append a short referenc
 
 3. If `gh` is missing or not logged in: use **GitHub REST API** `POST /repos/{owner}/{repo}/issues` with `GITHUB_TOKEN` (classic: `repo` scope) or **`gh auth token`**. Never print the token. Do not commit tokens.
 
-4. After creation, summarize **issue numbers and URLs** for the user.
-5. Confirm **`Release.md`** was updated under the target version (or explain why skipped).
+4. After creation, summarize **issue numbers and URLs** for the user (same values as in **`Release.md`**).
+5. Confirm **`Release.md`** was updated under the target version: each new bullet that has a corresponding issue includes **`#N`** and a **markdown link** to `https://github.com/OWNER/REPO/issues/N` (or explain skipped / failed rows).
 
 ## Safety
 
@@ -109,4 +132,4 @@ When `gh issue create` (or API) **succeeds**, optionally append a short referenc
 - [ ] Each line → one issue; titles follow shared prefix rules
 - [ ] Body includes verbatim source line
 - [ ] `gh issue create` or API used; results reported with links
-- [ ] `Release.md` latest (or named) version section updated with one `- [ ]` bullet per new line; no useless duplicates
+- [ ] `Release.md` latest (or named) version section updated with one `- [ ]` bullet per new line; no useless duplicates; **each created issue** reflected as **#N + markdown URL** on the matching bullet
