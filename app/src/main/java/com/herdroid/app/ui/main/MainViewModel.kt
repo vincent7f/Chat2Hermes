@@ -83,6 +83,8 @@ class MainViewModel(
     private val _chatMessages = MutableStateFlow<List<ChatUiMessage>>(emptyList())
     val chatMessages: StateFlow<List<ChatUiMessage>> = _chatMessages.asStateFlow()
     private var pendingRunResume: PendingRunResume? = null
+    private val _resumableAssistantMessageId = MutableStateFlow<Long?>(null)
+    val resumableAssistantMessageId: StateFlow<Long?> = _resumableAssistantMessageId.asStateFlow()
     private val _resumeRunPrompt = MutableStateFlow<ResumeRunPrompt?>(null)
     val resumeRunPrompt: StateFlow<ResumeRunPrompt?> = _resumeRunPrompt.asStateFlow()
 
@@ -185,6 +187,7 @@ class MainViewModel(
         _resumeRunPrompt.value = null
         val app = getApplication<Application>()
         viewModelScope.launch {
+            markAsResumingAfterManualContinue(pending.userMsgId, pending.assistantMsgId)
             streamExistingRun(
                 app = app,
                 prepared = pending.prepared,
@@ -197,11 +200,25 @@ class MainViewModel(
         }
     }
 
+    fun keepRunForLaterResume() {
+        _resumeRunPrompt.value = null
+    }
+
     fun dismissRunResumePrompt(markAsFailed: Boolean = true) {
         val pending = pendingRunResume
         _resumeRunPrompt.value = null
-        pendingRunResume = null
+        setPendingRunResume(null)
         if (!markAsFailed || pending == null) return
+        markAsFailedAfterResumeAborted(pending.userMsgId, pending.assistantMsgId)
+    }
+
+    fun stopWaitingCurrentRun() {
+        val pending = pendingRunResume ?: run {
+            _resumeRunPrompt.value = null
+            return
+        }
+        _resumeRunPrompt.value = null
+        setPendingRunResume(null)
         markAsFailedAfterResumeAborted(pending.userMsgId, pending.assistantMsgId)
     }
 
@@ -313,28 +330,48 @@ class MainViewModel(
         )
         result.fold(
             onSuccess = { fullReply ->
-                pendingRunResume = null
+                setPendingRunResume(null)
                 _resumeRunPrompt.value = null
                 onChatSuccess(userMsgId, assistantMsgId, fullReply)
             },
             onFailure = { t ->
                 if (allowManualResumePrompt && canPromptResume(t)) {
-                    pendingRunResume = PendingRunResume(
-                        prepared = prepared,
-                        runId = runId,
-                        userMsgId = userMsgId,
-                        assistantMsgId = assistantMsgId,
-                        maxReconnectAttempts = maxReconnectAttempts,
+                    setPendingRunResume(
+                        PendingRunResume(
+                            prepared = prepared,
+                            runId = runId,
+                            userMsgId = userMsgId,
+                            assistantMsgId = assistantMsgId,
+                            maxReconnectAttempts = maxReconnectAttempts,
+                        ),
                     )
+                    markAsFailedAfterResumeAborted(userMsgId, assistantMsgId)
                     _resumeRunPrompt.value = ResumeRunPrompt(runId = runId)
                     _userMessage.value = app.getString(R.string.chat_request_failed, t.message ?: t.javaClass.simpleName)
                 } else {
-                    pendingRunResume = null
+                    setPendingRunResume(null)
                     _resumeRunPrompt.value = null
                     onChatFailure(app, userMsgId, assistantMsgId, t)
                 }
             },
         )
+    }
+
+    private fun setPendingRunResume(value: PendingRunResume?) {
+        pendingRunResume = value
+        _resumableAssistantMessageId.value = value?.assistantMsgId
+    }
+
+    private fun markAsResumingAfterManualContinue(userMsgId: Long, assistantMsgId: Long) {
+        _chatMessages.update { list ->
+            list.map { m ->
+                when (m.id) {
+                    userMsgId -> m.copy(userSendState = UserMessageSendState.Sending)
+                    assistantMsgId -> m.copy(replyComplete = false)
+                    else -> m
+                }
+            }
+        }
     }
 
     private fun canPromptResume(t: Throwable): Boolean {

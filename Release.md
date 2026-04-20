@@ -95,6 +95,7 @@ Made-with: Cursor
 - [x] **\[feature]** 长耗时会话改为 Runs API：发送时先创建 `run_id` 再订阅 `/v1/runs/{run_id}/events`，避免单次 `chat/completions` 长连接在 10+ 分钟场景下更易断连；并兼容解析 chat-completions / responses 两类增量事件。实现 commit：（与 `[Cursor] feat(chat): switch main conversation to Hermes Runs API` 同批提交）
 - [x] **\[feature]** Runs 长会话断线自动重连：在同一 `run_id` 上自动续订阅事件流，新增重连提示文案「连接已恢复，继续接收中…」，并对重连回放增量去重以避免重复字符。实现 commit：（与 `[Cursor] feat(chat): reconnect runs stream on disconnect` 同批提交）
 - [x] **\[feature]** Runs 重连策略可配置并支持手动续订阅：设置页新增「自动重连次数（0-10）」；自动重连耗尽后，主界面弹窗可继续订阅同一 `run_id` 或停止等待。实现 commit：（与 `[Cursor] feat(chat): configurable and resumable runs reconnect` 同批提交）
+- [x] **\[feature]** 手动恢复入口增强：当 Runs 重连耗尽后可选择「稍后」，并在助手消息长按菜单中随时点击「继续接收」恢复同一 `run_id` 订阅。实现 commit：（与 `[Cursor] feat(chat): resume runs stream from message menu` 同批提交）
 
 ---
 

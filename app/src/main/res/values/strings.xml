@@ -66,6 +66,7 @@
     <string name="chat_resume_same_run_title">连接中断，继续当前回复？</string>
     <string name="chat_resume_same_run_body">已保留当前回复进度。是否继续订阅同一 run 以接收后续内容？</string>
     <string name="chat_resume_same_run_continue">继续接收</string>
+    <string name="chat_resume_same_run_later">稍后</string>
     <string name="chat_resume_same_run_cancel">停止等待</string>
     <string name="hint_model_name">hermes-agent</string>
     <string name="test_chat">测试对话</string>

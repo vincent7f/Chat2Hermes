@@ -9,6 +9,7 @@
 - 主界面对话优先使用 **Runs API**：先 `POST {baseUrl}/v1/runs` 创建 `run_id`，再 `GET {baseUrl}/v1/runs/{run_id}/events` 订阅 SSE；适合长耗时会话（可重连、可恢复订阅）。
 - 若事件流中途断线，客户端会在同一 `run_id` 上自动重连并继续接收；对可能的历史回放增量做去重，避免重复展示文本。
 - 自动重连次数可在设置页配置（`0~10`）；当自动重连次数耗尽时，主界面会提示用户是否继续订阅同一 `run_id`。
+- 若用户选择「稍后」，可在对应助手消息的长按菜单中点击「继续接收」，稍后再恢复同一 `run_id` 的订阅。
 - 设置页「测试对话」仍使用 **`POST {baseUrl}/v1/chat/completions`**（`stream: true`）以保持接口兼容测试。
 - 客户端按行解析 SSE 的 `event:` / `data:`；正文增量兼容 `choices[0].delta.content` 与 `response.output_text.delta` 风格。
 - 对话为 **无状态**：每一轮请求都在 `messages` 中携带完整历史（本应用已实现）。

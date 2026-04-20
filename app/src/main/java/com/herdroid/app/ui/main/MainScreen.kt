@@ -102,6 +102,7 @@ fun MainScreen(
     val collapseExpandEpoch by viewModel.collapseExpandEpoch.collectAsStateWithLifecycle()
     val resumeConversationPrompt by viewModel.resumeConversationPrompt.collectAsStateWithLifecycle()
     val resumeRunPrompt by viewModel.resumeRunPrompt.collectAsStateWithLifecycle()
+    val resumableAssistantMessageId by viewModel.resumableAssistantMessageId.collectAsStateWithLifecycle()
     val cdAutoPlayTts = stringResource(R.string.cd_auto_play_tts)
     val cdChatNew = stringResource(R.string.cd_chat_new)
 
@@ -172,7 +173,7 @@ fun MainScreen(
         }
         if (resumeRunPrompt != null) {
             AlertDialog(
-                onDismissRequest = { viewModel.dismissRunResumePrompt(markAsFailed = true) },
+                onDismissRequest = { viewModel.keepRunForLaterResume() },
                 title = { Text(stringResource(R.string.chat_resume_same_run_title)) },
                 text = { Text(stringResource(R.string.chat_resume_same_run_body)) },
                 confirmButton = {
@@ -181,8 +182,13 @@ fun MainScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { viewModel.dismissRunResumePrompt(markAsFailed = true) }) {
-                        Text(stringResource(R.string.chat_resume_same_run_cancel))
+                    Row {
+                        TextButton(onClick = { viewModel.keepRunForLaterResume() }) {
+                            Text(stringResource(R.string.chat_resume_same_run_later))
+                        }
+                        TextButton(onClick = { viewModel.stopWaitingCurrentRun() }) {
+                            Text(stringResource(R.string.chat_resume_same_run_cancel))
+                        }
                     }
                 },
             )
@@ -304,6 +310,11 @@ fun MainScreen(
                                 onResend = { viewModel.sendChatMessage(msg.text) },
                                 onCopy = { viewModel.copyMessageToClipboard(msg.text) },
                                 onSelectMessage = { selectionDialogText = msg.text },
+                                canResumeRun = (
+                                    msg.role == ChatMessageRole.Assistant &&
+                                        resumableAssistantMessageId == msg.id
+                                    ),
+                                onResumeRun = { viewModel.continueFailedRunSubscription() },
                                 onScrollToSelf = {
                                     listScrollScope.launch {
                                         listState.scrollToItem(index)
@@ -405,6 +416,8 @@ private fun ChatBubble(
     onResend: () -> Unit,
     onCopy: () -> Unit,
     onSelectMessage: () -> Unit,
+    canResumeRun: Boolean,
+    onResumeRun: () -> Unit,
     onScrollToSelf: () -> Unit,
 ) {
     val isUser = message.role == ChatMessageRole.User
@@ -435,6 +448,8 @@ private fun ChatBubble(
                     onResend = onResend,
                     onCopy = onCopy,
                     onSelectMessage = onSelectMessage,
+                    canResumeRun = false,
+                    onResumeRun = onResumeRun,
                     isUser = true,
                     onExpandTalk = null,
                 )
@@ -454,6 +469,8 @@ private fun ChatBubble(
                 onResend = onResend,
                 onCopy = onCopy,
                 onSelectMessage = onSelectMessage,
+                canResumeRun = canResumeRun,
+                onResumeRun = onResumeRun,
                 isUser = false,
                 onExpandTalk = onScrollToSelf,
             )
@@ -474,6 +491,8 @@ private fun MessageBubbleWithMenu(
     onResend: () -> Unit,
     onCopy: () -> Unit,
     onSelectMessage: () -> Unit,
+    canResumeRun: Boolean,
+    onResumeRun: () -> Unit,
     isUser: Boolean,
     onExpandTalk: (() -> Unit)?,
 ) {
@@ -679,6 +698,15 @@ private fun MessageBubbleWithMenu(
                     },
                 )
             } else {
+                if (canResumeRun) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.chat_resume_same_run_continue)) },
+                        onClick = {
+                            onMenuExpandedChange(false)
+                            onResumeRun()
+                        },
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.chat_menu_expand_talk)) },
                     onClick = {
