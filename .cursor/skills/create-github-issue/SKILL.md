@@ -1,6 +1,6 @@
 ---
 name: create-github-issue
-description: Turns each line of user-supplied text into one GitHub issue on the repo remote, normalizing bodies and grouping issue titles by similar line prefixes (brackets, keywords, list markers). Use when the user pastes a multi-line backlog or task list and wants it filed as separate issues, or says create issues from lines / normalize lines to GitHub issues.
+description: Turns each line of user-supplied text into one GitHub issue on the repo remote, normalizing bodies and grouping issue titles by similar line prefixes (brackets, keywords, list markers). Also appends each item to the latest version section in repo-root Release.md as planned release changes (checkbox bullets). Use when the user pastes a multi-line backlog, wants issues filed from lines, or wants Release.md kept in sync with new backlog items.
 ---
 
 # Create GitHub issues from line-oriented text
@@ -53,6 +53,34 @@ Use a small fixed template:
 
 If the user provided **global context** above the list, repeat one short **Background** section on **every** issue or on the **first** issue only—prefer **first issue + link** if GitHub supports it; otherwise repeat a one-line pointer in each body.
 
+## Release.md sync (this repository)
+
+After normalizing lines (and **in addition to** creating issues), update **`Release.md`** at the repository root so each retained line appears as a **planned change** under the correct release.
+
+### Which version section
+
+1. Default: use the **latest** `## \`vX.Y.Z\`` (or `vX.Y.Z-name`) section that represents the **current** release backlog—typically the **last** such heading **above** `## License` (or above the end of the file if no License block).
+2. If the user names a version (e.g. “记入 **v0.5.0**” / “under v0.4.0”), edit that section instead.
+3. If no matching section exists, **create** a new `## \`vX.Y.Z\`` block in the same style as `v0.4.0` (short intro line + checklist), placed **above** `## License` and **below** the previous version section.
+
+### What to add
+
+- For **each** retained input line, add **one** checklist item: `- [ ] …`, using the **same** prefix convention as issue titles (e.g. `**\[doc]** …`, `**\[feature]** …`) and **concise Chinese** (or match the existing bullets’ language in that section).
+- **Do not** duplicate: if a bullet with the same meaning is already present, skip or merge; prefer matching the repo’s existing `Release.md` tone (see `v0.3.0` / `v0.4.0` examples).
+- Order: append **below** existing `- [ ]` / `- [x]` items in that version’s list unless the user asks otherwise.
+
+### Issue cross-links (optional)
+
+When `gh issue create` (or API) **succeeds**, optionally append a short reference on the same bullet, e.g. `（跟踪：#12）` or a markdown link to the issue. If issue creation **fails**, still add the `- [ ]` line to `Release.md` and note the permission error for the user.
+
+### Git
+
+- Stage **`Release.md`** with the same batch as other edits; commit message prefix **`[Cursor]`** per repository rules (e.g. `[Cursor] docs(release): add v0.x.y backlog items`).
+
+### Relation to other skills
+
+- **`herdroid-release-apk`** covers marking items **done** (`- [x]`) and commit refs when shipping; this skill covers **adding** new planned items from line-oriented input.
+
 ## Submission
 
 1. Resolve repo: `git remote get-url origin` → `owner/repo`.
@@ -67,6 +95,7 @@ If the user provided **global context** above the list, repeat one short **Backg
 3. If `gh` is missing or not logged in: use **GitHub REST API** `POST /repos/{owner}/{repo}/issues` with `GITHUB_TOKEN` (classic: `repo` scope) or **`gh auth token`**. Never print the token. Do not commit tokens.
 
 4. After creation, summarize **issue numbers and URLs** for the user.
+5. Confirm **`Release.md`** was updated under the target version (or explain why skipped).
 
 ## Safety
 
@@ -80,3 +109,4 @@ If the user provided **global context** above the list, repeat one short **Backg
 - [ ] Each line → one issue; titles follow shared prefix rules
 - [ ] Body includes verbatim source line
 - [ ] `gh issue create` or API used; results reported with links
+- [ ] `Release.md` latest (or named) version section updated with one `- [ ]` bullet per new line; no useless duplicates
