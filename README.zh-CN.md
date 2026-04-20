@@ -31,7 +31,80 @@
 .\gradlew.bat lint assembleDebug
 ```
 
-构建完成后会生成默认包 `app/build/outputs/apk/debug/app-debug.apk`，并可能复制为带时间戳的 **`Herdroid-debug-<yyyyMMdd-HHmmss>.apk`**（见 `archiveHerdroidDebugApk`）。详见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
+构建完成后会生成默认包 `app/build/outputs/apk/debug/app-debug.apk`，并可能复制为带时间戳的 **`Chat2Hermes-debug-<yyyyMMdd-HHmmss>.apk`**（见 `archiveHerdroidDebugApk`）。详见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
+
+## 通过 LaunchDaemons 同时启动多个 profile（macOS）
+
+如果你希望多个 Hermes profile 同时在线，可以为每个 profile 启动一个 gateway，并使用不同端口。
+
+### 1）为每个 profile 配置独立 API Server 参数
+
+```bash
+# profile: alice
+hermes -p alice config set API_SERVER_ENABLED true
+hermes -p alice config set API_SERVER_HOST 127.0.0.1
+hermes -p alice config set API_SERVER_PORT 8643
+hermes -p alice config set API_SERVER_KEY alice-secret
+
+# profile: bob
+hermes -p bob config set API_SERVER_ENABLED true
+hermes -p bob config set API_SERVER_HOST 127.0.0.1
+hermes -p bob config set API_SERVER_PORT 8644
+hermes -p bob config set API_SERVER_KEY bob-secret
+```
+
+### 2）在 `/Library/LaunchDaemons/` 为每个 profile 新建 plist
+
+每个 profile 一份 plist，放在 `/Library/LaunchDaemons/`，并确保权限为 `root:wheel`、`644`。
+
+示例：`/Library/LaunchDaemons/com.hermes.gateway.alice.plist`
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.hermes.gateway.alice</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/hermes</string>
+    <string>-p</string>
+    <string>alice</string>
+    <string>gateway</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/var/log/hermes-alice.log</string>
+  <key>StandardErrorPath</key>
+  <string>/var/log/hermes-alice.err.log</string>
+</dict>
+</plist>
+```
+
+新增 `bob` profile 时可复制上面的文件，并修改：
+- `Label` 改为 `com.hermes.gateway.bob`
+- `ProgramArguments` 内 profile 从 `alice` 改为 `bob`
+- 日志路径改为 `hermes-bob.*`
+
+### 3）加载并验证
+
+```bash
+sudo chown root:wheel /Library/LaunchDaemons/com.hermes.gateway.alice.plist
+sudo chmod 644 /Library/LaunchDaemons/com.hermes.gateway.alice.plist
+sudo launchctl load -w /Library/LaunchDaemons/com.hermes.gateway.alice.plist
+
+# 验证服务健康状态
+curl -H "Authorization: Bearer alice-secret" http://127.0.0.1:8643/health
+```
+
+最后在 Chat2Hermes 中创建多个连接 profile，分别填入对应的 `host:port + API Key` 即可动态切换后端 profile。
 
 ## 许可
 

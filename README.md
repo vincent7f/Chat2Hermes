@@ -31,7 +31,80 @@ Create `local.properties` in the project root (`sdk.dir` pointing to your Androi
 .\gradlew.bat lint assembleDebug
 ```
 
-The default APK is `app/build/outputs/apk/debug/app-debug.apk`. The build may also copy a timestamped **`Herdroid-debug-<yyyyMMdd-HHmmss>.apk`** and archive per `archiveHerdroidDebugApk`. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+The default APK is `app/build/outputs/apk/debug/app-debug.apk`. The build may also copy a timestamped **`Chat2Hermes-debug-<yyyyMMdd-HHmmss>.apk`** and archive per `archiveHerdroidDebugApk`. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+
+## Run multiple Hermes profiles via LaunchDaemons (macOS)
+
+If you want several Hermes profiles online at the same time, run one gateway per profile on different ports.
+
+### 1) Configure profile-specific API server values
+
+```bash
+# Profile: alice
+hermes -p alice config set API_SERVER_ENABLED true
+hermes -p alice config set API_SERVER_HOST 127.0.0.1
+hermes -p alice config set API_SERVER_PORT 8643
+hermes -p alice config set API_SERVER_KEY alice-secret
+
+# Profile: bob
+hermes -p bob config set API_SERVER_ENABLED true
+hermes -p bob config set API_SERVER_HOST 127.0.0.1
+hermes -p bob config set API_SERVER_PORT 8644
+hermes -p bob config set API_SERVER_KEY bob-secret
+```
+
+### 2) Add one LaunchDaemon plist per profile
+
+Place plist files under `/Library/LaunchDaemons/` and keep owner/permission strict (`root:wheel`, `644`).
+
+Example: `/Library/LaunchDaemons/com.hermes.gateway.alice.plist`
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.hermes.gateway.alice</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/hermes</string>
+    <string>-p</string>
+    <string>alice</string>
+    <string>gateway</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/var/log/hermes-alice.log</string>
+  <key>StandardErrorPath</key>
+  <string>/var/log/hermes-alice.err.log</string>
+</dict>
+</plist>
+```
+
+For another profile (for example `bob`), copy this file and change:
+- `Label` to `com.hermes.gateway.bob`
+- profile in `ProgramArguments` from `alice` to `bob`
+- log paths to `hermes-bob.*`
+
+### 3) Load and verify
+
+```bash
+sudo chown root:wheel /Library/LaunchDaemons/com.hermes.gateway.alice.plist
+sudo chmod 644 /Library/LaunchDaemons/com.hermes.gateway.alice.plist
+sudo launchctl load -w /Library/LaunchDaemons/com.hermes.gateway.alice.plist
+
+# Verify gateway health
+curl -H "Authorization: Bearer alice-secret" http://127.0.0.1:8643/health
+```
+
+Then point different app profiles in Chat2Hermes to different `host:port + API key` pairs.
 
 ## License
 
