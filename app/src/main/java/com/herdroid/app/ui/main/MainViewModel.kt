@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.ArrayDeque
 
 /** 主界面 Hermes 对话；可选在收到助手回复后用系统 TTS 朗读。 */
 class MainViewModel(
@@ -60,6 +61,10 @@ class MainViewModel(
     val ttsLyric: StateFlow<TtsLyricUiState?> = _ttsLyric.asStateFlow()
 
     private var volumeWarningDismissJob: Job? = null
+
+    /** 朗读请求队列：正在播放一段时，新回复进入队列，按顺序播完。 */
+    private val ttsSpeakQueue = ArrayDeque<String>()
+    private var ttsQueuePlaybackActive = false
 
     private var chatMessageSeq = 0L
 
@@ -205,6 +210,20 @@ class MainViewModel(
     }
 
     private fun speakWithOptionalVolumeWarning(plainText: String) {
+        ttsSpeakQueue.addLast(plainText)
+        if (!ttsQueuePlaybackActive) {
+            playNextTtsFromQueue()
+        }
+    }
+
+    private fun playNextTtsFromQueue() {
+        if (ttsSpeakQueue.isEmpty()) {
+            ttsQueuePlaybackActive = false
+            _ttsLyric.value = null
+            return
+        }
+        ttsQueuePlaybackActive = true
+        val plainText = ttsSpeakQueue.removeFirst()
         val app = getApplication<Application>()
         if (MediaVolumeChecker.isMediaVolumeBelowHalf(app)) {
             showVolumeWarning(app.getString(R.string.volume_warning_low_tts))
@@ -227,11 +246,17 @@ class MainViewModel(
                 }
 
                 override fun onComplete() {
-                    _ttsLyric.value = null
+                    mainHandler.post {
+                        _ttsLyric.value = null
+                        playNextTtsFromQueue()
+                    }
                 }
 
                 override fun onError(message: String) {
-                    _ttsLyric.value = null
+                    mainHandler.post {
+                        _ttsLyric.value = null
+                        playNextTtsFromQueue()
+                    }
                 }
             },
         )
@@ -248,6 +273,8 @@ class MainViewModel(
     }
 
     fun dismissTtsLyric() {
+        ttsSpeakQueue.clear()
+        ttsQueuePlaybackActive = false
         ttsSpeaker.stopLyricPlayback()
         _ttsLyric.value = null
     }
