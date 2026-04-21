@@ -29,6 +29,15 @@ class HermesRunsClient(private val httpClient: OkHttpClient) {
 
             val body = JSONObject().apply {
                 put("model", model.trim().ifEmpty { "hermes-agent" })
+                // Newer Hermes Runs APIs validate `input` (responses-style) as required.
+                put("input", JSONArray().apply {
+                    messages.forEach { (role, content) ->
+                        put(
+                            JSONObject().put("role", role).put("content", content),
+                        )
+                    }
+                })
+                // Keep legacy compatibility for older gateways expecting `messages`.
                 put("messages", JSONArray().apply {
                     messages.forEach { (role, content) ->
                         put(JSONObject().put("role", role).put("content", content))
