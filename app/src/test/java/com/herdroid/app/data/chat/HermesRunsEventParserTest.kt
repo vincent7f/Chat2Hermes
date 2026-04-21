@@ -38,6 +38,15 @@ class HermesRunsEventParserTest {
     }
 
     @Test
+    fun extractTextDelta_decodesUnicodeEscapes() {
+        val delta = HermesRunsEventParser.extractTextDelta(
+            eventName = "response.output_text.delta",
+            rawData = """{"delta":"\u6ca1\u95ee\u9898"}""",
+        )
+        assertEquals("没问题", delta)
+    }
+
+    @Test
     fun isTerminalEvent_handlesDoneAndCompleted() {
         assertTrue(HermesRunsEventParser.isTerminalEvent(eventName = "response.completed", rawData = "{}"))
         assertTrue(HermesRunsEventParser.isTerminalEvent(eventName = null, rawData = "[DONE]"))

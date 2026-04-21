@@ -34,11 +34,60 @@ object HermesRunsEventParser {
     }
 
     private fun unescapeJsonString(v: String): String {
-        return v
-            .replace("\\\\", "\\")
-            .replace("\\\"", "\"")
-            .replace("\\n", "\n")
-            .replace("\\r", "\r")
-            .replace("\\t", "\t")
+        val out = StringBuilder(v.length)
+        var i = 0
+        while (i < v.length) {
+            val ch = v[i]
+            if (ch != '\\' || i + 1 >= v.length) {
+                out.append(ch)
+                i += 1
+                continue
+            }
+            val esc = v[i + 1]
+            when (esc) {
+                '\\' -> {
+                    out.append('\\')
+                    i += 2
+                }
+                '"' -> {
+                    out.append('"')
+                    i += 2
+                }
+                'n' -> {
+                    out.append('\n')
+                    i += 2
+                }
+                'r' -> {
+                    out.append('\r')
+                    i += 2
+                }
+                't' -> {
+                    out.append('\t')
+                    i += 2
+                }
+                'u' -> {
+                    if (i + 6 <= v.length) {
+                        val hex = v.substring(i + 2, i + 6)
+                        val code = hex.toIntOrNull(16)
+                        if (code != null) {
+                            out.append(code.toChar())
+                            i += 6
+                        } else {
+                            out.append("\\u")
+                            i += 2
+                        }
+                    } else {
+                        out.append("\\u")
+                        i += 2
+                    }
+                }
+                else -> {
+                    // 未识别转义：按原文保留
+                    out.append('\\').append(esc)
+                    i += 2
+                }
+            }
+        }
+        return out.toString()
     }
 }
