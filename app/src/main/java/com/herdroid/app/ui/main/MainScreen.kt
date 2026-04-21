@@ -360,8 +360,8 @@ fun MainScreen(
         volumeWarning?.let { text ->
             Surface(
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 8.dp, start = 16.dp, end = 16.dp)
+                    .align(Alignment.Center)
+                    .padding(start = 16.dp, end = 16.dp)
                     .zIndex(1f),
                 shape = RoundedCornerShape(12.dp),
                 tonalElevation = 6.dp,
