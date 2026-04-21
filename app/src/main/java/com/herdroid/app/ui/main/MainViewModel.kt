@@ -21,6 +21,7 @@ import com.herdroid.app.domain.tts.LyricLineWindow
 import com.herdroid.app.domain.tts.LyricPlaybackCallback
 import com.herdroid.app.domain.tts.SystemTtsSpeaker
 import com.herdroid.app.ui.hermes.errorMessage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.ArrayDeque
 import java.util.UUID
 import org.json.JSONArray
@@ -178,12 +180,14 @@ class MainViewModel(
             val prepared = prepareChatRequest(app) ?: return@launch
             val pending = enqueuePendingMessages(trimmed)
             val prefs = settingsRepository.preferencesFlow.first()
-            val createRun = runsClient.createRun(
-                baseUrl = prepared.baseUrl,
-                apiKey = prepared.apiKey,
-                model = prepared.model,
-                messages = pending.apiMessages,
-            )
+            val createRun = withContext(Dispatchers.IO) {
+                runsClient.createRun(
+                    baseUrl = prepared.baseUrl,
+                    apiKey = prepared.apiKey,
+                    model = prepared.model,
+                    messages = pending.apiMessages,
+                )
+            }
             val runId = createRun.getOrElse { t ->
                 onChatFailure(app, pending.userMsgId, pending.assistantMsgId, t)
                 return@launch
@@ -333,20 +337,22 @@ class MainViewModel(
         maxReconnectAttempts: Int,
         allowManualResumePrompt: Boolean,
     ) {
-        val result = runsClient.continueRunAndCollectText(
-            baseUrl = prepared.baseUrl,
-            apiKey = prepared.apiKey,
-            runId = runId,
-            onContentDelta = { delta ->
-                mainHandler.post { applyAssistantDelta(assistantMsgId, delta) }
-            },
-            maxReconnectAttempts = maxReconnectAttempts,
-            onReconnect = {
-                mainHandler.post {
-                    _userMessage.value = app.getString(R.string.chat_reconnected_receiving)
-                }
-            },
-        )
+        val result = withContext(Dispatchers.IO) {
+            runsClient.continueRunAndCollectText(
+                baseUrl = prepared.baseUrl,
+                apiKey = prepared.apiKey,
+                runId = runId,
+                onContentDelta = { delta ->
+                    mainHandler.post { applyAssistantDelta(assistantMsgId, delta) }
+                },
+                maxReconnectAttempts = maxReconnectAttempts,
+                onReconnect = {
+                    mainHandler.post {
+                        _userMessage.value = app.getString(R.string.chat_reconnected_receiving)
+                    }
+                },
+            )
+        }
         result.fold(
             onSuccess = { fullReply ->
                 setPendingRunResume(null)
