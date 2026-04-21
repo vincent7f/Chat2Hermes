@@ -54,6 +54,18 @@ class MainViewModel(
             SharingStarted.WhileSubscribed(5_000),
             UserPreferences.DEFAULT,
         )
+    val activeProfileId: StateFlow<String> = settingsRepository.activeProfileId
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            "default",
+        )
+    val profileIds: StateFlow<List<String>> = settingsRepository.profileIds
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            listOf("default"),
+        )
 
     private val _userMessage = MutableStateFlow<String?>(null)
     val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
@@ -118,6 +130,13 @@ class MainViewModel(
     fun setAutoPlayTts(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setAutoPlayTts(enabled)
+        }
+    }
+
+    fun switchProfile(profileId: String) {
+        viewModelScope.launch {
+            runCatching { settingsRepository.setActiveProfile(profileId) }
+                .onSuccess { clearChat() }
         }
     }
 

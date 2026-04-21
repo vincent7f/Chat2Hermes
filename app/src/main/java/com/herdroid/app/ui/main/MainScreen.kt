@@ -35,6 +35,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
@@ -99,6 +100,8 @@ fun MainScreen(
     val ttsLyric by viewModel.ttsLyric.collectAsStateWithLifecycle()
     val chatMessages by viewModel.chatMessages.collectAsState()
     val prefs by viewModel.preferences.collectAsStateWithLifecycle(initialValue = UserPreferences.DEFAULT)
+    val activeProfileId by viewModel.activeProfileId.collectAsStateWithLifecycle()
+    val profileIds by viewModel.profileIds.collectAsStateWithLifecycle()
     val collapseExpandEpoch by viewModel.collapseExpandEpoch.collectAsStateWithLifecycle()
     val resumeConversationPrompt by viewModel.resumeConversationPrompt.collectAsStateWithLifecycle()
     val resumeRunPrompt by viewModel.resumeRunPrompt.collectAsStateWithLifecycle()
@@ -115,6 +118,7 @@ fun MainScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var inputText by remember { mutableStateOf("") }
     var selectionDialogText by remember { mutableStateOf<String?>(null) }
+    var profileMenuExpanded by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val listScrollScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
@@ -198,12 +202,36 @@ fun MainScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = stringResource(R.string.main_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Box {
+                        TextButton(onClick = { profileMenuExpanded = true }) {
+                            Text(
+                                text = activeProfileId,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Icon(
+                                imageVector = Icons.Filled.ArrowDropDown,
+                                contentDescription = null,
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = profileMenuExpanded,
+                            onDismissRequest = { profileMenuExpanded = false },
+                        ) {
+                            profileIds.forEach { id ->
+                                DropdownMenuItem(
+                                    text = { Text(id) },
+                                    onClick = {
+                                        profileMenuExpanded = false
+                                        if (id != activeProfileId) {
+                                            viewModel.switchProfile(id)
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                    }
                 },
                 actions = {
                     val actionScroll = rememberScrollState()
