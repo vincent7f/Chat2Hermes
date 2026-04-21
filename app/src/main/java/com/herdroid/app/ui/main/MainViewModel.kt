@@ -180,7 +180,7 @@ class MainViewModel(
             val prepared = prepareChatRequest(app) ?: return@launch
             val pending = enqueuePendingMessages(trimmed)
             val prefs = settingsRepository.preferencesFlow.first()
-            val createRun = withContext(Dispatchers.IO) {
+            val createRun = runNetworkOnIo {
                 runsClient.createRun(
                     baseUrl = prepared.baseUrl,
                     apiKey = prepared.apiKey,
@@ -337,7 +337,7 @@ class MainViewModel(
         maxReconnectAttempts: Int,
         allowManualResumePrompt: Boolean,
     ) {
-        val result = withContext(Dispatchers.IO) {
+        val result = runNetworkOnIo {
             runsClient.continueRunAndCollectText(
                 baseUrl = prepared.baseUrl,
                 apiKey = prepared.apiKey,
@@ -662,3 +662,6 @@ private data class PendingRunResume(
     val assistantMsgId: Long,
     val maxReconnectAttempts: Int,
 )
+
+internal suspend fun <T> runNetworkOnIo(block: suspend () -> T): T =
+    withContext(Dispatchers.IO) { block() }
