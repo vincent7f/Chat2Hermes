@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -109,6 +110,7 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val saveScope = rememberCoroutineScope()
     val userMessage by viewModel.userMessage.collectAsStateWithLifecycle()
+    val isTestingChat by viewModel.isTestingChat.collectAsStateWithLifecycle()
 
     LaunchedEffect(userMessage) {
         val m = userMessage ?: return@LaunchedEffect
@@ -427,5 +429,22 @@ fun SettingsScreen(
                 Text(stringResource(R.string.save))
             }
         }
+    }
+
+    if (isTestingChat) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(stringResource(R.string.test_chat)) },
+            text = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.height(20.dp))
+                    Text(stringResource(R.string.test_chat_testing))
+                }
+            },
+            confirmButton = {},
+        )
     }
 }

@@ -31,6 +31,8 @@ class SettingsViewModel(
 
     private val _userMessage = MutableStateFlow<String?>(null)
     val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
+    private val _isTestingChat = MutableStateFlow(false)
+    val isTestingChat: StateFlow<Boolean> = _isTestingChat.asStateFlow()
 
     private val appCtx: Application get() = getApplication()
 
@@ -112,6 +114,7 @@ class SettingsViewModel(
     /** 与主界面发消息相同：同一套 URL（[OpenAiChatFromSettings]）与 [executeCompletions]。 */
     fun testChatCompletion(scheme: String, host: String, portText: String, apiKey: String, model: String) {
         viewModelScope.launch {
+            _isTestingChat.value = false
             val outcome = OpenAiChatFromSettings.prepareFromPortText(scheme, host, portText, apiKey, model)
             outcome.errorMessage(appCtx)?.let {
                 _userMessage.value = it
@@ -122,23 +125,27 @@ class SettingsViewModel(
                 _userMessage.value = appCtx.getString(R.string.test_feedback_network_unavailable)
                 return@launch
             }
-            _userMessage.value = appCtx.getString(R.string.test_chat_testing)
-            val result = OpenAiChatFromSettings.executeCompletions(
-                chatClient,
-                prepared,
-                listOf("user" to DEFAULT_TEST_CHAT_PROMPT),
-            )
-            _userMessage.value = result.fold(
-                onSuccess = { reply ->
-                    appCtx.getString(R.string.test_chat_ok, reply)
-                },
-                onFailure = { t ->
-                    appCtx.getString(
-                        R.string.test_chat_fail,
-                        t.message ?: t.javaClass.simpleName,
-                    )
-                },
-            )
+            _isTestingChat.value = true
+            try {
+                val result = OpenAiChatFromSettings.executeCompletions(
+                    chatClient,
+                    prepared,
+                    listOf("user" to DEFAULT_TEST_CHAT_PROMPT),
+                )
+                _userMessage.value = result.fold(
+                    onSuccess = { reply ->
+                        appCtx.getString(R.string.test_chat_ok, reply)
+                    },
+                    onFailure = { t ->
+                        appCtx.getString(
+                            R.string.test_chat_fail,
+                            t.message ?: t.javaClass.simpleName,
+                        )
+                    },
+                )
+            } finally {
+                _isTestingChat.value = false
+            }
         }
     }
 
