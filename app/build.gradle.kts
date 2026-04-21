@@ -68,7 +68,7 @@ val archiveHerdroidDebugApk =
     tasks.register("archiveHerdroidDebugApk") {
         group = "build"
         description =
-            "Copy debug APK as <project-dir>-debug-<timestamp>.apk to outputs/apk/debug and D:/BaiduSyncdisk/apk/Herdroid"
+            "Copy debug APK as <project-dir>-debug-<timestamp>.apk to outputs/apk/debug and D:/BaiduSyncdisk/apk/Chat2Hermes"
         dependsOn("assembleDebug")
         doLast {
             val ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))
@@ -82,7 +82,7 @@ val archiveHerdroidDebugApk =
             outDir.mkdirs()
             val destProject = outDir.resolve(fileName)
             source.copyTo(destProject, overwrite = true)
-            val syncRoot = rootProject.file("D:/BaiduSyncdisk/apk/Herdroid")
+            val syncRoot = rootProject.file("D:/BaiduSyncdisk/apk/Chat2Hermes")
             syncRoot.mkdirs()
             val destSync = syncRoot.resolve(fileName)
             source.copyTo(destSync, overwrite = true)
