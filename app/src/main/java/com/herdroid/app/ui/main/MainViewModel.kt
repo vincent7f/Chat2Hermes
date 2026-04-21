@@ -81,6 +81,7 @@ class MainViewModel(
     val ttsLyric: StateFlow<TtsLyricUiState?> = _ttsLyric.asStateFlow()
 
     private var volumeWarningDismissJob: Job? = null
+    private var activeChatJob: Job? = null
 
     /** 朗读请求队列：正在播放一段时，新回复进入队列，按顺序播完。 */
     private val ttsSpeakQueue = ArrayDeque<String>()
@@ -138,7 +139,11 @@ class MainViewModel(
     fun switchProfile(profileId: String) {
         viewModelScope.launch {
             runCatching { settingsRepository.setActiveProfile(profileId) }
-                .onSuccess { clearChat() }
+                .onSuccess {
+                    activeChatJob?.cancel()
+                    activeChatJob = null
+                    clearChat()
+                }
         }
     }
 
@@ -176,8 +181,9 @@ class MainViewModel(
         if (trimmed.isEmpty()) return
         resumeTtsIfPausedForImeAfterSend()
         val app = getApplication<Application>()
-        viewModelScope.launch {
-            val prepared = prepareChatRequest(app) ?: return@launch
+        val profileIdAtSend = activeProfileId.value
+        activeChatJob = viewModelScope.launch {
+            val prepared = prepareChatRequest(app, profileIdAtSend) ?: return@launch
             val pending = enqueuePendingMessages(trimmed)
             val prefs = settingsRepository.preferencesFlow.first()
             val createRun = runNetworkOnIo {
@@ -245,8 +251,8 @@ class MainViewModel(
         markAsFailedAfterResumeAborted(pending.userMsgId, pending.assistantMsgId)
     }
 
-    private suspend fun prepareChatRequest(app: Application): OpenAiChatFromSettings.Prepared? {
-        val prefs = settingsRepository.preferencesFlow.first()
+    private suspend fun prepareChatRequest(app: Application, profileId: String): OpenAiChatFromSettings.Prepared? {
+        val prefs = settingsRepository.getPreferencesSnapshotForProfile(profileId)
         val outcome = OpenAiChatFromSettings.prepareFromPreferences(prefs)
         outcome.errorMessage(app)?.let {
             _userMessage.value = it

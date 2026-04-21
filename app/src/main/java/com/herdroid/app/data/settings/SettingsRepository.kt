@@ -133,6 +133,12 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[Meta.ACTIVE] = profileId }
     }
 
+    /** 读取指定 profile 的即时快照（不依赖当前 active profile）。 */
+    suspend fun getPreferencesSnapshotForProfile(profileId: String): UserPreferences {
+        val pid = profileId.ifBlank { "default" }
+        return context.dataStore.data.first().toUserPreferences(pid)
+    }
+
     /**
      * @return 新 profile 的 id，若重名或非法则返回 `null`。
      */
