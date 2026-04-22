@@ -47,6 +47,51 @@ class HermesRunsEventParserTest {
     }
 
     @Test
+    fun extractTextDelta_ignoresTerminalCompletedPayload() {
+        val delta = HermesRunsEventParser.extractTextDelta(
+            eventName = "response.completed",
+            rawData = """{"status":"completed","content":"full text"}""",
+        )
+        assertEquals(null, delta)
+    }
+
+    @Test
+    fun extractTextDelta_ignoresDoneEventPayload() {
+        val delta = HermesRunsEventParser.extractTextDelta(
+            eventName = "response.output_text.done",
+            rawData = """{"content":"full text"}""",
+        )
+        assertEquals(null, delta)
+    }
+
+    @Test
+    fun extractTextDelta_prefersDeltaOverContentWhenBothExist() {
+        val delta = HermesRunsEventParser.extractTextDelta(
+            eventName = "response.output_text.delta",
+            rawData = """{"delta":"x","content":"already_full"}""",
+        )
+        assertEquals("x", delta)
+    }
+
+    @Test
+    fun extractTextDelta_ignoresNonDeltaSnapshotEvent() {
+        val delta = HermesRunsEventParser.extractTextDelta(
+            eventName = "response.output_text",
+            rawData = """{"content":"full text snapshot"}""",
+        )
+        assertEquals(null, delta)
+    }
+
+    @Test
+    fun extractTextDelta_ignoresContentOnlyWithoutDeltaHint() {
+        val delta = HermesRunsEventParser.extractTextDelta(
+            eventName = null,
+            rawData = """{"content":"full text snapshot"}""",
+        )
+        assertEquals(null, delta)
+    }
+
+    @Test
     fun isTerminalEvent_handlesDoneAndCompleted() {
         assertTrue(HermesRunsEventParser.isTerminalEvent(eventName = "response.completed", rawData = "{}"))
         assertTrue(HermesRunsEventParser.isTerminalEvent(eventName = null, rawData = "[DONE]"))

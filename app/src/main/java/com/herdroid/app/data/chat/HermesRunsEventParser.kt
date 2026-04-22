@@ -11,11 +11,22 @@ object HermesRunsEventParser {
 
     fun extractTextDelta(eventName: String?, rawData: String): String? {
         if (rawData.isBlank() || rawData == "[DONE]") return null
+        if (isTerminalEvent(eventName, rawData)) return null
+        val normalizedEventName = eventName.orEmpty().lowercase()
+        if (
+            normalizedEventName.contains("done") ||
+            normalizedEventName.contains("completed") ||
+            normalizedEventName.contains("failed") ||
+            normalizedEventName == "error"
+        ) {
+            return null
+        }
+        if (!looksLikeDeltaPayload(normalizedEventName, rawData)) return null
         @Suppress("UNUSED_VARIABLE")
         val ignoredEventName = eventName
-        return extractJsonString(rawData, "content")
-            ?: extractJsonString(rawData, "delta")
+        return extractJsonString(rawData, "delta")
             ?: extractJsonString(rawData, "text")
+            ?: extractJsonString(rawData, "content")
     }
 
     fun isTerminalEvent(eventName: String?, rawData: String): Boolean {
@@ -89,5 +100,11 @@ object HermesRunsEventParser {
             }
         }
         return out.toString()
+    }
+
+    private fun looksLikeDeltaPayload(normalizedEventName: String, rawData: String): Boolean {
+        if (normalizedEventName.contains("delta") || normalizedEventName.contains("chunk")) return true
+        if (rawData.contains("\"delta\"")) return true
+        return false
     }
 }
