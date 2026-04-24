@@ -359,20 +359,32 @@ fun MainScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                OutlinedTextField(
-                    value = inputText,
-                    onValueChange = { inputText = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text(stringResource(R.string.chat_input_hint)) },
-                    minLines = 1,
-                    maxLines = 4,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(
-                        onSend = {
-                            sendCurrentInput()
+                Column(modifier = Modifier.weight(1f)) {
+                    OutlinedTextField(
+                        value = inputText,
+                        onValueChange = { inputText = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text(stringResource(R.string.chat_input_hint)) },
+                        minLines = 1,
+                        maxLines = 4,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(
+                            onSend = {
+                                sendCurrentInput()
+                            },
+                        ),
+                    )
+                    Text(
+                        text = if (inputText.isBlank()) {
+                            stringResource(R.string.chat_input_status_idle)
+                        } else {
+                            stringResource(R.string.chat_input_status_ready)
                         },
-                    ),
-                )
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp, start = 4.dp),
+                    )
+                }
                 IconButton(
                     onClick = sendCurrentInput,
                     enabled = inputText.isNotBlank(),

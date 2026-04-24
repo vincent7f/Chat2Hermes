@@ -13,6 +13,8 @@
     <string name="tts_lyric_line_progress">第 %1$d / %2$d 段</string>
     <string name="last_message_label">最近消息</string>
     <string name="chat_input_hint">输入消息…</string>
+    <string name="chat_input_status_idle">输入内容后可发送，键盘回车也可发送</string>
+    <string name="chat_input_status_ready">可发送：点右侧按钮或键盘回车</string>
     <string name="chat_empty">发送消息以开始对话</string>
     <string name="chat_need_api_key">请先在设置中填写 API Key</string>
     <string name="chat_need_base_url">请先在设置中填写有效的访问协议、地址与端口</string>
