@@ -542,8 +542,12 @@ private fun MessageBubbleWithMenu(
     /** 折叠预览与全文一致时无需折叠态（避免「展开」无意义）。 */
     val previewSameAsFull = previewPrefix == trimmedBody
 
+    val canFoldByLength =
+        message.text.isNotBlank() &&
+            !showStreamingPlaceholder &&
+            !previewSameAsFull
     val shouldFold =
-        (shouldFoldAssistant || shouldFoldUser) && !previewSameAsFull
+        (shouldFoldAssistant || shouldFoldUser || canFoldByLength)
     val cdCollapsed = stringResource(R.string.cd_chat_collapsed_row)
 
     var replyExpanded by remember(message.id) { mutableStateOf(true) }
@@ -702,15 +706,15 @@ private fun MessageBubbleWithMenu(
             expanded = menuExpanded,
             onDismissRequest = { onMenuExpandedChange(false) },
         ) {
-            if (shouldFold) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.chat_menu_toggle_fold)) },
-                    onClick = {
-                        onMenuExpandedChange(false)
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.chat_menu_toggle_fold)) },
+                onClick = {
+                    onMenuExpandedChange(false)
+                    if (shouldFold) {
                         replyExpanded = !replyExpanded
-                    },
-                )
-            }
+                    }
+                },
+            )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.chat_menu_read_aloud)) },
                 onClick = {
