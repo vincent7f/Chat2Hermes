@@ -88,6 +88,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -549,9 +550,14 @@ private fun MessageBubbleWithMenu(
     val shouldFold =
         (shouldFoldAssistant || shouldFoldUser || canFoldByLength)
     val cdCollapsed = stringResource(R.string.cd_chat_collapsed_row)
+    val statusReceiving = stringResource(R.string.chat_status_receiving)
+    val statusResumable = stringResource(R.string.chat_status_resumable)
+    val statusRecovered = stringResource(R.string.chat_status_recovered)
+    val statusFailed = stringResource(R.string.chat_status_failed)
 
     var replyExpanded by remember(message.id) { mutableStateOf(true) }
     var didApplyInitialCollapse by remember(message.id) { mutableStateOf(false) }
+    var showRecoveredStatus by remember(message.id) { mutableStateOf(false) }
 
     LaunchedEffect(
         message.id,
@@ -582,124 +588,165 @@ private fun MessageBubbleWithMenu(
             replyExpanded = false
         }
     }
+    LaunchedEffect(showRecoveredStatus, message.replyComplete) {
+        if (showRecoveredStatus && !message.replyComplete) {
+            showRecoveredStatus = false
+            return@LaunchedEffect
+        }
+        if (showRecoveredStatus) {
+            delay(2_500)
+            showRecoveredStatus = false
+        }
+    }
+
+    val assistantStatusText: String? = if (isUser) {
+        null
+    } else {
+        when {
+            showRecoveredStatus -> statusRecovered
+            !message.replyComplete -> statusReceiving
+            canResumeRun && message.text.isEmpty() -> statusResumable
+            message.replyComplete && message.text.isEmpty() -> statusFailed
+            else -> null
+        }
+    }
+    val assistantStatusColor = when (assistantStatusText) {
+        statusRecovered -> MaterialTheme.colorScheme.tertiary
+        statusFailed -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val triggerResumeRun: () -> Unit = {
+        showRecoveredStatus = true
+        onResumeRun()
+    }
 
     Box {
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = if (isUser) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            },
-            modifier = Modifier
-                .widthIn(max = 320.dp)
-                .then(
-                    if (shouldFold) {
-                        Modifier.combinedClickable(
-                            onClick = {
-                                if (!replyExpanded) {
-                                    replyExpanded = true
-                                }
-                            },
-                            onLongClick = { onMenuExpandedChange(true) },
-                        )
-                    } else {
-                        Modifier.pointerInput(Unit) {
-                            detectTapGestures(
-                                onLongPress = { onMenuExpandedChange(true) },
-                            )
-                        }
-                    },
-                ),
-        ) {
-            when {
-                shouldFold && !replyExpanded -> {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text(
-                            text = previewPrefix,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (isUser) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            },
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier
-                                .weight(1f, fill = false)
-                                .semantics {
-                                    contentDescription = cdCollapsed
+        Column {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = if (isUser) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+                modifier = Modifier
+                    .widthIn(max = 320.dp)
+                    .then(
+                        if (shouldFold) {
+                            Modifier.combinedClickable(
+                                onClick = {
+                                    if (!replyExpanded) {
+                                        replyExpanded = true
+                                    }
                                 },
-                        )
-                        TextButton(
-                            onClick = { replyExpanded = true },
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                                onLongClick = { onMenuExpandedChange(true) },
+                            )
+                        } else {
+                            Modifier.pointerInput(Unit) {
+                                detectTapGestures(
+                                    onLongPress = { onMenuExpandedChange(true) },
+                                )
+                            }
+                        },
+                    ),
+            ) {
+                when {
+                    shouldFold && !replyExpanded -> {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             Text(
-                                text = stringResource(R.string.chat_expand),
-                                style = MaterialTheme.typography.labelLarge,
-                                maxLines = 1,
-                            )
-                        }
-                    }
-                }
-                shouldFold && replyExpanded -> {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        if (!isUser && message.replyComplete) {
-                            AssistantMarkdownBody(message.text)
-                        } else {
-                            Text(
-                                text = message.text,
+                                text = previewPrefix,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = if (isUser) {
                                     MaterialTheme.colorScheme.onPrimaryContainer
                                 } else {
                                     MaterialTheme.colorScheme.onSurface
                                 },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .weight(1f, fill = false)
+                                    .semantics {
+                                        contentDescription = cdCollapsed
+                                    },
                             )
-                        }
-                        TextButton(
-                            onClick = { replyExpanded = false },
-                            modifier = Modifier.align(Alignment.End),
-                        ) {
-                            Text(stringResource(R.string.chat_collapse))
-                        }
-                    }
-                }
-                else -> {
-                    val streamingSingleLine = !isUser && !message.replyComplete
-                    when {
-                        !isUser && message.replyComplete && message.text.isNotEmpty() -> {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                AssistantMarkdownBody(message.text)
+                            TextButton(
+                                onClick = { replyExpanded = true },
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.chat_expand),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    maxLines = 1,
+                                )
                             }
                         }
-                        else -> {
-                            Text(
-                                text = displayText,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (displayText != message.text) {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                } else if (isUser) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                },
-                                maxLines = if (streamingSingleLine) 1 else Int.MAX_VALUE,
-                                overflow = if (streamingSingleLine) {
-                                    TextOverflow.Ellipsis
-                                } else {
-                                    TextOverflow.Clip
-                                },
-                                modifier = Modifier.padding(12.dp),
-                            )
+                    }
+                    shouldFold && replyExpanded -> {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            if (!isUser && message.replyComplete) {
+                                AssistantMarkdownBody(message.text)
+                            } else {
+                                Text(
+                                    text = message.text,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (isUser) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    },
+                                )
+                            }
+                            TextButton(
+                                onClick = { replyExpanded = false },
+                                modifier = Modifier.align(Alignment.End),
+                            ) {
+                                Text(stringResource(R.string.chat_collapse))
+                            }
+                        }
+                    }
+                    else -> {
+                        val streamingSingleLine = !isUser && !message.replyComplete
+                        when {
+                            !isUser && message.replyComplete && message.text.isNotEmpty() -> {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    AssistantMarkdownBody(message.text)
+                                }
+                            }
+                            else -> {
+                                Text(
+                                    text = displayText,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (displayText != message.text) {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    } else if (isUser) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    },
+                                    maxLines = if (streamingSingleLine) 1 else Int.MAX_VALUE,
+                                    overflow = if (streamingSingleLine) {
+                                        TextOverflow.Ellipsis
+                                    } else {
+                                        TextOverflow.Clip
+                                    },
+                                    modifier = Modifier.padding(12.dp),
+                                )
+                            }
                         }
                     }
                 }
+            }
+            assistantStatusText?.let { status ->
+                Text(
+                    text = status,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = assistantStatusColor,
+                    modifier = Modifier.padding(top = 4.dp, start = 8.dp),
+                )
             }
         }
         DropdownMenu(
@@ -744,7 +791,7 @@ private fun MessageBubbleWithMenu(
                             text = { Text(stringResource(R.string.chat_menu_refresh)) },
                             onClick = {
                                 onMenuExpandedChange(false)
-                                onResumeRun()
+                                triggerResumeRun()
                             },
                         )
                     }
@@ -752,7 +799,7 @@ private fun MessageBubbleWithMenu(
                         text = { Text(stringResource(R.string.chat_resume_same_run_continue)) },
                         onClick = {
                             onMenuExpandedChange(false)
-                            onResumeRun()
+                            triggerResumeRun()
                         },
                     )
                 }
