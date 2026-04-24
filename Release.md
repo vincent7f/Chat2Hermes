@@ -119,6 +119,23 @@ Made-with: Cursor
 
 ---
 
+## `v0.4.2`
+
+基于 `docs/v0.4.2-plan.md` 的实施批次。执行规则：每项完成后立即提交 git，并在本节同步勾选与补充 commit。
+
+- [ ] A1 消息状态可视化统一（接收中/待恢复/已恢复/失败）
+- [ ] A2 长按菜单重排分组（会话控制、内容操作、其他）
+- [ ] A3 输入区可用性增强（发送状态反馈与提示优化）
+- [ ] B4 设置页信息分区（连接配置、模型与鉴权、稳定性）
+- [ ] B5 Profile 操作反馈补强（切换/删除后的明确提示）
+- [ ] B6 术语统一（刷新/继续接收/重发等口径）
+- [ ] C7 微交互一致性（菜单、折展、状态切换动画）
+- [ ] C8 无障碍与触达优化（点击区域、语义、对比度）
+- [ ] C9 空状态与异常态增强（给出下一步行动）
+- [ ] 全部完成后执行一次 `assembleDebug`，并汇报 APK 完整文件名与完整路径。
+
+---
+
 ## License
 
 This project is released under the **MIT License** already in the repository: see [`LICENSE`](LICENSE) at the repo root (Copyright © 2026 Vincent Liang).
