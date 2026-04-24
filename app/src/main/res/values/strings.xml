@@ -58,6 +58,9 @@
     <string name="status_connected">已连接</string>
     <string name="status_error">错误：%1$s</string>
     <string name="settings_title">设置</string>
+    <string name="settings_section_connection">连接配置</string>
+    <string name="settings_section_model_auth">模型与鉴权</string>
+    <string name="settings_section_stability">稳定性</string>
     <string name="settings_profile_label">连接配置（profile）</string>
     <string name="settings_profile_add">新建 profile</string>
     <string name="settings_profile_delete">删除 profile</string>
