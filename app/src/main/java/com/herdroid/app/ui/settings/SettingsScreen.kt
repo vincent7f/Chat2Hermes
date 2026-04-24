@@ -129,6 +129,7 @@ fun SettingsScreen(
     val userMessage by viewModel.userMessage.collectAsStateWithLifecycle()
     val isTestingChat by viewModel.isTestingChat.collectAsStateWithLifecycle()
     var profileSwitchTarget by remember { mutableStateOf<String?>(null) }
+    var deletedProfileName by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(userMessage) {
         val m = userMessage ?: return@LaunchedEffect
@@ -143,6 +144,13 @@ fun SettingsScreen(
             )
             profileSwitchTarget = null
         }
+    }
+    LaunchedEffect(activeProfileId, deletedProfileName) {
+        val deleted = deletedProfileName ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(
+            context.getString(R.string.settings_profile_delete_success_switched, deleted, activeProfileId),
+        )
+        deletedProfileName = null
     }
 
     Scaffold(
@@ -335,13 +343,13 @@ fun SettingsScreen(
                                 deleteProfileFinalConfirmVisible = false
                                 viewModel.deleteProfile(deletingId) { ok ->
                                     snackbarScope.launch {
-                                        snackbarHostState.showSnackbar(
-                                            if (ok) {
-                                                context.getString(R.string.settings_profile_delete_success, deletingId)
-                                            } else {
-                                                context.getString(R.string.settings_profile_delete_failed)
-                                            },
-                                        )
+                                        if (ok) {
+                                            deletedProfileName = deletingId
+                                        } else {
+                                            snackbarHostState.showSnackbar(
+                                                context.getString(R.string.settings_profile_delete_failed),
+                                            )
+                                        }
                                     }
                                 }
                             },
