@@ -56,6 +56,7 @@ import com.herdroid.app.data.settings.UserPreferences
 import com.herdroid.app.domain.HealthCheckUrlFactory
 
 private val SCHEME_OPTIONS = listOf("http", "https")
+private val RUNS_RECONNECT_OPTIONS = listOf(0, 1, 3, 6, 10)
 
 private fun normalizeScheme(value: String): String {
     val lower = value.lowercase().trim()
@@ -65,6 +66,11 @@ private fun normalizeScheme(value: String): String {
         "wss" -> "https"
         else -> "http"
     }
+}
+
+private fun normalizeRunsReconnectAttempts(value: Int): Int {
+    if (value in RUNS_RECONNECT_OPTIONS) return value
+    return 3
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,7 +85,6 @@ fun SettingsScreen(
         initialValue = UserPreferences.DEFAULT,
     )
     val portInvalidText = stringResource(R.string.port_invalid)
-    val runsReconnectInvalidText = stringResource(R.string.runs_reconnect_attempts_invalid)
 
     var scheme by remember { mutableStateOf(normalizeScheme(prefs.scheme)) }
     var schemePickerVisible by remember { mutableStateOf(false) }
@@ -87,9 +92,11 @@ fun SettingsScreen(
     var portText by remember { mutableStateOf(prefs.port.toString()) }
     var apiKey by remember { mutableStateOf(prefs.apiKey) }
     var modelName by remember { mutableStateOf(prefs.modelName) }
-    var runsReconnectAttemptsText by remember { mutableStateOf(prefs.runsAutoReconnectAttempts.toString()) }
+    var runsReconnectAttempts by remember {
+        mutableStateOf(normalizeRunsReconnectAttempts(prefs.runsAutoReconnectAttempts))
+    }
+    var runsReconnectMenuExpanded by remember { mutableStateOf(false) }
     var portError by remember { mutableStateOf<String?>(null) }
-    var runsReconnectError by remember { mutableStateOf<String?>(null) }
 
     val activeProfileId by repository.activeProfileId.collectAsStateWithLifecycle(initialValue = "default")
     val profileIds by repository.profileIds.collectAsStateWithLifecycle(initialValue = listOf("default"))
@@ -105,8 +112,7 @@ fun SettingsScreen(
         portText = prefs.port.toString()
         apiKey = prefs.apiKey
         modelName = prefs.modelName
-        runsReconnectAttemptsText = prefs.runsAutoReconnectAttempts.toString()
-        runsReconnectError = null
+        runsReconnectAttempts = normalizeRunsReconnectAttempts(prefs.runsAutoReconnectAttempts)
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -464,23 +470,59 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            OutlinedTextField(
-                value = runsReconnectAttemptsText,
-                onValueChange = {
-                    runsReconnectAttemptsText = it
-                    runsReconnectError = null
-                },
-                label = { Text(stringResource(R.string.runs_reconnect_attempts_label)) },
-                placeholder = { Text(stringResource(R.string.runs_reconnect_attempts_hint)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                isError = runsReconnectError != null,
-                supportingText = {
-                    runsReconnectError?.let {
-                        Text(it, color = MaterialTheme.colorScheme.error)
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Surface(
+                    onClick = { runsReconnectMenuExpanded = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = OutlinedTextFieldDefaults.shape,
+                    color = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outline,
+                    ),
+                    shadowElevation = 0.dp,
+                    tonalElevation = 0.dp,
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(OutlinedTextFieldDefaults.contentPadding())
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.runs_reconnect_attempts_label),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                text = runsReconnectAttempts.toString(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Filled.ArrowDropDown,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
-                },
-            )
+                }
+                DropdownMenu(
+                    expanded = runsReconnectMenuExpanded,
+                    onDismissRequest = { runsReconnectMenuExpanded = false },
+                ) {
+                    RUNS_RECONNECT_OPTIONS.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.toString()) },
+                            onClick = {
+                                runsReconnectAttempts = option
+                                runsReconnectMenuExpanded = false
+                            },
+                        )
+                    }
+                }
+            }
             OutlinedButton(
                 onClick = {
                     viewModel.testChatCompletion(scheme, host, portText, apiKey, modelName)
@@ -501,11 +543,6 @@ fun SettingsScreen(
                         portError = portInvalidText
                         return@Button
                     }
-                    val reconnectAttempts = runsReconnectAttemptsText.toIntOrNull()
-                    if (reconnectAttempts == null || reconnectAttempts !in 0..10) {
-                        runsReconnectError = runsReconnectInvalidText
-                        return@Button
-                    }
                     saveScope.launch {
                         viewModel.save(
                             scheme = scheme,
@@ -513,7 +550,7 @@ fun SettingsScreen(
                             port = port,
                             apiKey = apiKey,
                             modelName = modelName,
-                            runsAutoReconnectAttempts = reconnectAttempts,
+                            runsAutoReconnectAttempts = runsReconnectAttempts,
                         )
                         onBack()
                     }
