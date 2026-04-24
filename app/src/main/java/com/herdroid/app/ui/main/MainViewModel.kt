@@ -416,15 +416,12 @@ class MainViewModel(
 
     private fun markAsFailedAfterResumeAborted(userMsgId: Long, assistantMsgId: Long) {
         _chatMessages.update { list ->
-            val markedUser = list.map { m ->
-                if (m.id == userMsgId) m.copy(userSendState = UserMessageSendState.Failed) else m
-            }
-            val asst = markedUser.find { it.id == assistantMsgId }
-            if (asst == null || asst.text.isBlank()) {
-                markedUser.filterNot { it.id == assistantMsgId }
-            } else {
-                markedUser.map { m ->
-                    if (m.id == assistantMsgId) m.copy(replyComplete = true) else m
+            list.map { m ->
+                when (m.id) {
+                    userMsgId -> m.copy(userSendState = UserMessageSendState.Failed)
+                    // 保留 0 字符助手消息，供长按菜单执行「刷新」主动续拉。
+                    assistantMsgId -> m.copy(replyComplete = true)
+                    else -> m
                 }
             }
         }
