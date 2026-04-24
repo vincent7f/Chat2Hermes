@@ -1,0 +1,11 @@
+---
+description: APK 构建后必须报告完整文件名
+alwaysApply: true
+---
+
+# APK 构建结果汇报
+
+- 每次执行 APK 构建（如 `assembleDebug`、`assembleRelease`）并完成后，回复用户时必须明确给出生成 APK 的完整文件名。
+- 优先提供完整路径（例如 `app/build/outputs/apk/.../xxx.apk`），至少要包含文件全名（含时间戳与后缀）。
+- 若一次构建产出多个 APK，需逐一列出每个 APK 的完整文件名。
+- 若构建失败，需明确说明未生成 APK，不可省略结果说明。
