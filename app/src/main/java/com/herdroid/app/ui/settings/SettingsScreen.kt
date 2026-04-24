@@ -96,6 +96,8 @@ fun SettingsScreen(
     var profileMenuExpanded by remember { mutableStateOf(false) }
     var addProfileDialogVisible by remember { mutableStateOf(false) }
     var newProfileName by remember { mutableStateOf("") }
+    var deleteProfileDialogVisible by remember { mutableStateOf(false) }
+    var deleteProfileFinalConfirmVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(prefs) {
         scheme = normalizeScheme(prefs.scheme)
@@ -144,26 +146,41 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Box(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+                Surface(
+                    onClick = { profileMenuExpanded = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = OutlinedTextFieldDefaults.shape,
+                    color = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outline,
+                    ),
+                    shadowElevation = 0.dp,
+                    tonalElevation = 0.dp,
                 ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.settings_profile_label),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    Row(
+                        modifier = Modifier
+                            .padding(OutlinedTextFieldDefaults.contentPadding())
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.settings_profile_label),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                text = activeProfileId,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Filled.ArrowDropDown,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Text(
-                            text = stringResource(R.string.settings_profile_current, activeProfileId),
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                    }
-                    TextButton(onClick = { profileMenuExpanded = true }) {
-                        Text(stringResource(R.string.settings_profile_switch))
                     }
                 }
                 DropdownMenu(
@@ -174,21 +191,35 @@ fun SettingsScreen(
                         DropdownMenuItem(
                             text = { Text(id) },
                             onClick = {
-                                viewModel.switchProfile(id)
                                 profileMenuExpanded = false
+                                if (id != activeProfileId) {
+                                    viewModel.switchProfile(id)
+                                }
                             },
                         )
                     }
                 }
             }
-            OutlinedButton(
-                onClick = {
-                    newProfileName = ""
-                    addProfileDialogVisible = true
-                },
+            Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(stringResource(R.string.settings_profile_add))
+                OutlinedButton(
+                    onClick = {
+                        newProfileName = ""
+                        addProfileDialogVisible = true
+                    },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(stringResource(R.string.settings_profile_add))
+                }
+                OutlinedButton(
+                    onClick = { deleteProfileDialogVisible = true },
+                    enabled = profileIds.size > 1,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(stringResource(R.string.settings_profile_delete))
+                }
             }
             if (addProfileDialogVisible) {
                 AlertDialog(
@@ -217,6 +248,58 @@ fun SettingsScreen(
                     },
                     dismissButton = {
                         TextButton(onClick = { addProfileDialogVisible = false }) {
+                            Text(stringResource(R.string.settings_profile_add_cancel))
+                        }
+                    },
+                )
+            }
+            if (deleteProfileDialogVisible) {
+                AlertDialog(
+                    onDismissRequest = { deleteProfileDialogVisible = false },
+                    title = { Text(stringResource(R.string.settings_profile_delete)) },
+                    text = {
+                        Text(
+                            stringResource(
+                                R.string.settings_profile_delete_confirm,
+                                activeProfileId,
+                            ),
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                deleteProfileDialogVisible = false
+                                deleteProfileFinalConfirmVisible = true
+                            },
+                        ) {
+                            Text(stringResource(R.string.settings_profile_delete))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { deleteProfileDialogVisible = false }) {
+                            Text(stringResource(R.string.settings_profile_add_cancel))
+                        }
+                    },
+                )
+            }
+            if (deleteProfileFinalConfirmVisible) {
+                AlertDialog(
+                    onDismissRequest = { deleteProfileFinalConfirmVisible = false },
+                    title = { Text(stringResource(R.string.settings_profile_delete_final_title)) },
+                    text = { Text(stringResource(R.string.settings_profile_delete_irreversible)) },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                val deletingId = activeProfileId
+                                deleteProfileFinalConfirmVisible = false
+                                viewModel.deleteProfile(deletingId) { }
+                            },
+                        ) {
+                            Text(stringResource(R.string.settings_profile_delete_confirm_final))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { deleteProfileFinalConfirmVisible = false }) {
                             Text(stringResource(R.string.settings_profile_add_cancel))
                         }
                     },

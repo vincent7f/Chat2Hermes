@@ -53,6 +53,13 @@ class SettingsViewModel(
         }
     }
 
+    fun deleteProfile(profileId: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val ok = repository.deleteProfile(profileId)
+            onResult(ok)
+        }
+    }
+
     /** 必须 await 完成后再离开设置页，否则主界面会读到未落盘的旧 API Key。 */
     suspend fun save(
         scheme: String,

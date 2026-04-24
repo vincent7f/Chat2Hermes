@@ -174,6 +174,40 @@ class SettingsRepository(private val context: Context) {
         return newId
     }
 
+    /**
+     * 删除指定 profile；至少保留一个 profile。
+     * @return 删除是否成功。
+     */
+    suspend fun deleteProfile(profileId: String): Boolean {
+        val target = profileId.trim()
+        if (target.isEmpty()) return false
+        val snapshot = context.dataStore.data.first()
+        val currentActive = snapshot[Meta.ACTIVE] ?: "default"
+        val list = (snapshot[Meta.PROFILES_CSV] ?: "default")
+            .split(',')
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+            .toMutableList()
+        if (target !in list) return false
+        if (list.size <= 1) return false
+
+        list.remove(target)
+        val nextActive = if (currentActive == target) list.first() else currentActive
+        context.dataStore.edit { prefs ->
+            prefs[Meta.PROFILES_CSV] = list.joinToString(",")
+            prefs[Meta.ACTIVE] = nextActive
+            prefs.remove(kStr(target, "scheme"))
+            prefs.remove(kStr(target, "host"))
+            prefs.remove(kInt(target, "port"))
+            prefs.remove(kStr(target, "api_key"))
+            prefs.remove(kStr(target, "model_name"))
+            prefs.remove(kBool(target, "auto_play_tts"))
+            prefs.remove(kInt(target, "runs_auto_reconnect_attempts"))
+        }
+        return true
+    }
+
     private fun Preferences.toUserPreferences(profileId: String): UserPreferences {
         val pid = profileId.ifEmpty { "default" }
         return UserPreferences(

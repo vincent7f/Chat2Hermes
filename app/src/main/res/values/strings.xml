@@ -48,9 +48,12 @@
     <string name="status_error">错误：%1$s</string>
     <string name="settings_title">设置</string>
     <string name="settings_profile_label">连接配置（profile）</string>
-    <string name="settings_profile_current">当前：%1$s</string>
-    <string name="settings_profile_switch">切换</string>
     <string name="settings_profile_add">新建 profile</string>
+    <string name="settings_profile_delete">删除 profile</string>
+    <string name="settings_profile_delete_confirm">确认删除 profile「%1$s」吗？</string>
+    <string name="settings_profile_delete_final_title">再次确认删除</string>
+    <string name="settings_profile_delete_irreversible">该删除不可恢复，删除后将无法找回此 profile 的配置。</string>
+    <string name="settings_profile_delete_confirm_final">确认删除</string>
     <string name="settings_profile_add_hint">名称（字母数字，用于区分不同 Hermes 实例）</string>
     <string name="settings_profile_add_confirm">创建</string>
     <string name="settings_profile_add_cancel">取消</string>
