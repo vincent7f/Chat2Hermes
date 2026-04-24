@@ -48,6 +48,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -169,7 +171,11 @@ fun SettingsScreen(
             Box(modifier = Modifier.fillMaxWidth()) {
                 Surface(
                     onClick = { profileMenuExpanded = true },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            contentDescription = stringResource(R.string.cd_settings_profile_selector)
+                        },
                     shape = OutlinedTextFieldDefaults.shape,
                     color = MaterialTheme.colorScheme.surface,
                     border = BorderStroke(
@@ -360,7 +366,11 @@ fun SettingsScreen(
             ) {
                 Surface(
                     onClick = { schemePickerVisible = true },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics {
+                            contentDescription = stringResource(R.string.cd_settings_scheme_selector)
+                        },
                     shape = OutlinedTextFieldDefaults.shape,
                     color = MaterialTheme.colorScheme.surface,
                     border = BorderStroke(
@@ -527,7 +537,11 @@ fun SettingsScreen(
             Box(modifier = Modifier.fillMaxWidth()) {
                 Surface(
                     onClick = { runsReconnectMenuExpanded = true },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            contentDescription = stringResource(R.string.cd_settings_reconnect_selector)
+                        },
                     shape = OutlinedTextFieldDefaults.shape,
                     color = MaterialTheme.colorScheme.surface,
                     border = BorderStroke(

@@ -389,10 +389,13 @@ fun MainScreen(
                 IconButton(
                     onClick = sendCurrentInput,
                     enabled = inputText.isNotBlank(),
+                    modifier = Modifier.semantics {
+                        contentDescription = stringResource(R.string.cd_send_chat)
+                    },
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
-                        contentDescription = stringResource(R.string.cd_send_chat),
+                        contentDescription = null,
                     )
                 }
             }

@@ -76,6 +76,9 @@
     <string name="settings_profile_add_hint">名称（字母数字，用于区分不同 Hermes 实例）</string>
     <string name="settings_profile_add_confirm">创建</string>
     <string name="settings_profile_add_cancel">取消</string>
+    <string name="cd_settings_profile_selector">选择当前连接配置 profile</string>
+    <string name="cd_settings_scheme_selector">选择访问协议</string>
+    <string name="cd_settings_reconnect_selector">选择 Runs 自动重连次数</string>
     <string name="cd_back">返回</string>
     <string name="scheme_label">协议</string>
     <string name="host_label">域名/IP</string>
