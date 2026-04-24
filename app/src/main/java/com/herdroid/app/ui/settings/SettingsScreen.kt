@@ -305,42 +305,73 @@ fun SettingsScreen(
                     },
                 )
             }
-            Surface(
-                onClick = { schemePickerVisible = true },
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                shape = OutlinedTextFieldDefaults.shape,
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.outline,
-                ),
-                shadowElevation = 0.dp,
-                tonalElevation = 0.dp,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.Top,
             ) {
-                Row(
-                    modifier = Modifier
-                        .padding(OutlinedTextFieldDefaults.contentPadding())
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
+                Surface(
+                    onClick = { schemePickerVisible = true },
+                    modifier = Modifier.weight(1f),
+                    shape = OutlinedTextFieldDefaults.shape,
+                    color = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outline,
+                    ),
+                    shadowElevation = 0.dp,
+                    tonalElevation = 0.dp,
                 ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.scheme_label),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = scheme,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
+                    Row(
+                        modifier = Modifier
+                            .padding(OutlinedTextFieldDefaults.contentPadding())
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.scheme_label),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                text = scheme,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Filled.ArrowDropDown,
+                            contentDescription = stringResource(R.string.cd_scheme_dropdown),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    Icon(
-                        imageVector = Icons.Filled.ArrowDropDown,
-                        contentDescription = stringResource(R.string.cd_scheme_dropdown),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
+                OutlinedTextField(
+                    value = host,
+                    onValueChange = { host = it },
+                    label = { Text(stringResource(R.string.host_label)) },
+                    placeholder = { Text(stringResource(R.string.hint_host)) },
+                    modifier = Modifier.weight(1.4f),
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = portText,
+                    onValueChange = {
+                        portText = it
+                        portError = null
+                    },
+                    label = { Text(stringResource(R.string.port_label)) },
+                    placeholder = { Text(stringResource(R.string.hint_port)) },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    isError = portError != null,
+                    supportingText = {
+                        if (portError != null) {
+                            Text(portError!!, color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                )
             }
             if (schemePickerVisible) {
                 AlertDialog(
@@ -384,31 +415,6 @@ fun SettingsScreen(
                     },
                 )
             }
-            OutlinedTextField(
-                value = host,
-                onValueChange = { host = it },
-                label = { Text(stringResource(R.string.host_label)) },
-                placeholder = { Text(stringResource(R.string.hint_host)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-            OutlinedTextField(
-                value = portText,
-                onValueChange = {
-                    portText = it
-                    portError = null
-                },
-                label = { Text(stringResource(R.string.port_label)) },
-                placeholder = { Text(stringResource(R.string.hint_port)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                isError = portError != null,
-                supportingText = {
-                    if (portError != null) {
-                        Text(portError!!, color = MaterialTheme.colorScheme.error)
-                    }
-                },
-            )
             OutlinedButton(
                 onClick = {
                     viewModel.testHaConnection(scheme, host, portText, apiKey)
@@ -431,27 +437,32 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            OutlinedTextField(
-                value = apiKey,
-                onValueChange = { apiKey = it },
-                label = { Text(stringResource(R.string.hermes_api_key)) },
-                placeholder = { Text(stringResource(R.string.hermes_api_key_hint)) },
-                supportingText = {
-                    Text(
-                        stringResource(R.string.hermes_api_key_supporting),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                },
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-            OutlinedTextField(
-                value = modelName,
-                onValueChange = { modelName = it },
-                label = { Text(stringResource(R.string.model_name_label)) },
-                placeholder = { Text(stringResource(R.string.hint_model_name)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                OutlinedTextField(
+                    value = apiKey,
+                    onValueChange = { apiKey = it },
+                    label = { Text(stringResource(R.string.hermes_api_key)) },
+                    placeholder = { Text(stringResource(R.string.hermes_api_key_hint)) },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = modelName,
+                    onValueChange = { modelName = it },
+                    label = { Text(stringResource(R.string.model_name_label)) },
+                    placeholder = { Text(stringResource(R.string.hint_model_name)) },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                )
+            }
+            Text(
+                text = stringResource(R.string.hermes_api_key_supporting),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             OutlinedTextField(
                 value = runsReconnectAttemptsText,
