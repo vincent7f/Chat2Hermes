@@ -68,6 +68,11 @@
     <string name="settings_profile_delete_final_title">再次确认删除</string>
     <string name="settings_profile_delete_irreversible">该删除不可恢复，删除后将无法找回此 profile 的配置。</string>
     <string name="settings_profile_delete_confirm_final">确认删除</string>
+    <string name="settings_profile_switched_to">已切换到 profile：%1$s</string>
+    <string name="settings_profile_add_success">已创建 profile</string>
+    <string name="settings_profile_add_failed">创建 profile 失败，请检查名称</string>
+    <string name="settings_profile_delete_success">已删除 profile：%1$s</string>
+    <string name="settings_profile_delete_failed">删除 profile 失败</string>
     <string name="settings_profile_add_hint">名称（字母数字，用于区分不同 Hermes 实例）</string>
     <string name="settings_profile_add_confirm">创建</string>
     <string name="settings_profile_add_cancel">取消</string>

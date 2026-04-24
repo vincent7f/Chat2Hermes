@@ -45,6 +45,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -84,6 +85,7 @@ fun SettingsScreen(
     val prefs by repository.preferencesFlow.collectAsStateWithLifecycle(
         initialValue = UserPreferences.DEFAULT,
     )
+    val context = LocalContext.current
     val portInvalidText = stringResource(R.string.port_invalid)
 
     var scheme by remember { mutableStateOf(normalizeScheme(prefs.scheme)) }
@@ -116,14 +118,25 @@ fun SettingsScreen(
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarScope = rememberCoroutineScope()
     val saveScope = rememberCoroutineScope()
     val userMessage by viewModel.userMessage.collectAsStateWithLifecycle()
     val isTestingChat by viewModel.isTestingChat.collectAsStateWithLifecycle()
+    var profileSwitchTarget by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(userMessage) {
         val m = userMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(m)
         viewModel.clearUserMessage()
+    }
+    LaunchedEffect(activeProfileId) {
+        val target = profileSwitchTarget ?: return@LaunchedEffect
+        if (target == activeProfileId) {
+            snackbarHostState.showSnackbar(
+                context.getString(R.string.settings_profile_switched_to, activeProfileId),
+            )
+            profileSwitchTarget = null
+        }
     }
 
     Scaffold(
@@ -199,6 +212,7 @@ fun SettingsScreen(
                             onClick = {
                                 profileMenuExpanded = false
                                 if (id != activeProfileId) {
+                                    profileSwitchTarget = id
                                     viewModel.switchProfile(id)
                                 }
                             },
@@ -246,7 +260,17 @@ fun SettingsScreen(
                                 val name = newProfileName
                                 addProfileDialogVisible = false
                                 newProfileName = ""
-                                viewModel.addProfile(name) { }
+                                viewModel.addProfile(name) { ok ->
+                                    snackbarScope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            if (ok) {
+                                                context.getString(R.string.settings_profile_add_success)
+                                            } else {
+                                                context.getString(R.string.settings_profile_add_failed)
+                                            },
+                                        )
+                                    }
+                                }
                             },
                         ) {
                             Text(stringResource(R.string.settings_profile_add_confirm))
@@ -298,7 +322,17 @@ fun SettingsScreen(
                             onClick = {
                                 val deletingId = activeProfileId
                                 deleteProfileFinalConfirmVisible = false
-                                viewModel.deleteProfile(deletingId) { }
+                                viewModel.deleteProfile(deletingId) { ok ->
+                                    snackbarScope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            if (ok) {
+                                                context.getString(R.string.settings_profile_delete_success, deletingId)
+                                            } else {
+                                                context.getString(R.string.settings_profile_delete_failed)
+                                            },
+                                        )
+                                    }
+                                }
                             },
                         ) {
                             Text(stringResource(R.string.settings_profile_delete_confirm_final))
