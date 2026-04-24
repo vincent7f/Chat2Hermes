@@ -90,6 +90,9 @@ fun SettingsScreen(
     )
     val context = LocalContext.current
     val portInvalidText = stringResource(R.string.port_invalid)
+    val cdSettingsProfileSelector = stringResource(R.string.cd_settings_profile_selector)
+    val cdSettingsSchemeSelector = stringResource(R.string.cd_settings_scheme_selector)
+    val cdSettingsReconnectSelector = stringResource(R.string.cd_settings_reconnect_selector)
 
     var scheme by remember { mutableStateOf(normalizeScheme(prefs.scheme)) }
     var schemePickerVisible by remember { mutableStateOf(false) }
@@ -174,7 +177,7 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics {
-                            contentDescription = stringResource(R.string.cd_settings_profile_selector)
+                            contentDescription = cdSettingsProfileSelector
                         },
                     shape = OutlinedTextFieldDefaults.shape,
                     color = MaterialTheme.colorScheme.surface,
@@ -369,7 +372,7 @@ fun SettingsScreen(
                     modifier = Modifier
                         .weight(1f)
                         .semantics {
-                            contentDescription = stringResource(R.string.cd_settings_scheme_selector)
+                            contentDescription = cdSettingsSchemeSelector
                         },
                     shape = OutlinedTextFieldDefaults.shape,
                     color = MaterialTheme.colorScheme.surface,
@@ -540,7 +543,7 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics {
-                            contentDescription = stringResource(R.string.cd_settings_reconnect_selector)
+                            contentDescription = cdSettingsReconnectSelector
                         },
                     shape = OutlinedTextFieldDefaults.shape,
                     color = MaterialTheme.colorScheme.surface,

@@ -112,6 +112,7 @@ fun MainScreen(
     val resumableAssistantMessageId by viewModel.resumableAssistantMessageId.collectAsStateWithLifecycle()
     val cdAutoPlayTts = stringResource(R.string.cd_auto_play_tts)
     val cdChatNew = stringResource(R.string.cd_chat_new)
+    val cdSendChat = stringResource(R.string.cd_send_chat)
 
     val chatTimeFormatter = remember {
         SimpleDateFormat("HH:mm", Locale.getDefault()).apply {
@@ -397,7 +398,7 @@ fun MainScreen(
                     onClick = sendCurrentInput,
                     enabled = inputText.isNotBlank(),
                     modifier = Modifier.semantics {
-                        contentDescription = stringResource(R.string.cd_send_chat)
+                        contentDescription = cdSendChat
                     },
                 ) {
                     Icon(
