@@ -132,7 +132,7 @@ Made-with: Cursor
 - [x] C7 微交互一致性（菜单、折展、状态切换动画）。实现 commit：`1144327`
 - [x] C8 无障碍与触达优化（点击区域、语义、对比度）。实现 commit：`f3d1631`
 - [x] C9 空状态与异常态增强（给出下一步行动）。实现 commit：`78703c4`
-- [ ] 全部完成后执行一次 `assembleDebug`，并汇报 APK 完整文件名与完整路径。
+- [x] 全部完成后执行一次 `assembleDebug`，并汇报 APK 完整文件名与完整路径。实现 commit：`c26ba29`（构建产物：`Chat2Hermes-debug-20260424-235443.apk`）
 
 ---
 
