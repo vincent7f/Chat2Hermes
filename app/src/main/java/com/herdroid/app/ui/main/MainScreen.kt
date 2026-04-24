@@ -5,6 +5,7 @@
 
 package com.herdroid.app.ui.main
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -634,7 +635,9 @@ private fun MessageBubbleWithMenu(
     }
 
     Box {
-        Column {
+        Column(
+            modifier = Modifier.animateContentSize(),
+        ) {
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = if (isUser) {
@@ -758,7 +761,9 @@ private fun MessageBubbleWithMenu(
                     text = status,
                     style = MaterialTheme.typography.labelSmall,
                     color = assistantStatusColor,
-                    modifier = Modifier.padding(top = 4.dp, start = 8.dp),
+                    modifier = Modifier
+                        .padding(top = 4.dp, start = 8.dp)
+                        .animateContentSize(),
                 )
             }
         }
