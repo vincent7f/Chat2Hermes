@@ -1,6 +1,6 @@
 ---
-description: 在本仓库修改代码或资源后自动执行 debug APK 完整构建
-alwaysApply: true
+description: 在本仓库修改代码或资源后自动执行 debug APK 完整构建（已禁用自动应用）
+alwaysApply: false
 ---
 
 # 修改后构建 APK（Herdroid）
