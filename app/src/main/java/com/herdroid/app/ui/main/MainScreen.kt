@@ -739,6 +739,15 @@ private fun MessageBubbleWithMenu(
                 )
             } else {
                 if (canResumeRun) {
+                    if (message.text.isEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.chat_menu_refresh)) },
+                            onClick = {
+                                onMenuExpandedChange(false)
+                                onResumeRun()
+                            },
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.chat_resume_same_run_continue)) },
                         onClick = {
