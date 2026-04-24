@@ -58,7 +58,7 @@ object OpenAiChatFromSettings {
         val root = HealthCheckUrlFactory.buildHttpOrigin(scheme, host, port)
         if (root.isNullOrEmpty()) return PrepareOutcome.BaseUrlInvalid
         if (apiKey.isBlank()) return PrepareOutcome.ApiKeyMissing
-        val m = model.trim().ifEmpty { "hermes-agent" }
+        val m = model.trim()
         return PrepareOutcome.Ready(
             Prepared(baseUrl = root, apiKey = apiKey.trim(), model = m),
         )
