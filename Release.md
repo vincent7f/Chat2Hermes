@@ -97,6 +97,18 @@ Made-with: Cursor
 - [x] **\[feature]** Runs 重连策略可配置并支持手动续订阅：设置页新增「自动重连次数（0-10）」；自动重连耗尽后，主界面弹窗可继续订阅同一 `run_id` 或停止等待。实现 commit：（与 `[Cursor] feat(chat): configurable and resumable runs reconnect` 同批提交）
 - [x] **\[feature]** 手动恢复入口增强：当 Runs 重连耗尽后可选择「稍后」，并在助手消息长按菜单中随时点击「继续接收」恢复同一 `run_id` 订阅。实现 commit：（与 `[Cursor] feat(chat): resume runs stream from message menu` 同批提交）
 
+### 今日提交归类（2026-04-24）
+
+- **聊天交互（长按菜单与折叠）**
+  - `3a82350`：消息长按菜单新增折叠切换入口，并将主界面「新对话」改为 `+` 图标。
+  - `3d24166`：统一所有消息长按菜单增加「折/展」，按当前状态在折叠与展开间切换。
+- **设置页交互优化（Profile 与布局）**
+  - `6685af7`：profile 改为下拉即切换；新增删除 profile，带不可恢复提示与二次确认；新建/删除同一行。
+  - `2aa76c6`：压缩设置表单布局：`协议 + 地址 + 端口` 同行，`API Key + 模型名称` 同行。
+  - `65380b6`：设置项文案更新：`访问协议` -> `协议`，`地址（IP 或主机名）` -> `域名/IP`。
+- **流程规则**
+  - `0d80806`：新增规则 `report-apk-full-name-after-build.mdc`，要求每次 APK 构建后汇报 APK 完整文件名（优先完整路径）。
+
 ---
 
 ## License
