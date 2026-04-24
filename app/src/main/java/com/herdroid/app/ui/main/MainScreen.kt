@@ -44,6 +44,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -754,6 +755,29 @@ private fun MessageBubbleWithMenu(
             onDismissRequest = { onMenuExpandedChange(false) },
         ) {
             DropdownMenuItem(
+                text = { Text(stringResource(R.string.chat_menu_group_session)) },
+                onClick = {},
+                enabled = false,
+            )
+            if (!isUser && canResumeRun && message.text.isEmpty()) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.chat_menu_refresh)) },
+                    onClick = {
+                        onMenuExpandedChange(false)
+                        triggerResumeRun()
+                    },
+                )
+            }
+            if (!isUser && canResumeRun) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.chat_menu_continue_receiving)) },
+                    onClick = {
+                        onMenuExpandedChange(false)
+                        triggerResumeRun()
+                    },
+                )
+            }
+            DropdownMenuItem(
                 text = { Text(stringResource(R.string.chat_menu_toggle_fold)) },
                 onClick = {
                     onMenuExpandedChange(false)
@@ -761,6 +785,12 @@ private fun MessageBubbleWithMenu(
                         replyExpanded = !replyExpanded
                     }
                 },
+            )
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.chat_menu_group_content)) },
+                onClick = {},
+                enabled = false,
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.chat_menu_read_aloud)) },
@@ -777,6 +807,12 @@ private fun MessageBubbleWithMenu(
                 },
             )
             if (isUser) {
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.chat_menu_group_other)) },
+                    onClick = {},
+                    enabled = false,
+                )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.chat_menu_resend)) },
                     onClick = {
@@ -785,37 +821,25 @@ private fun MessageBubbleWithMenu(
                     },
                 )
             } else {
-                if (canResumeRun) {
-                    if (message.text.isEmpty()) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.chat_menu_refresh)) },
-                            onClick = {
-                                onMenuExpandedChange(false)
-                                triggerResumeRun()
-                            },
-                        )
-                    }
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.chat_resume_same_run_continue)) },
-                        onClick = {
-                            onMenuExpandedChange(false)
-                            triggerResumeRun()
-                        },
-                    )
-                }
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.chat_menu_copy)) },
+                    onClick = {
+                        onMenuExpandedChange(false)
+                        onCopy()
+                    },
+                )
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.chat_menu_group_other)) },
+                    onClick = {},
+                    enabled = false,
+                )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.chat_menu_expand_talk)) },
                     onClick = {
                         onMenuExpandedChange(false)
                         replyExpanded = true
                         onExpandTalk?.invoke()
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.chat_menu_copy)) },
-                    onClick = {
-                        onMenuExpandedChange(false)
-                        onCopy()
                     },
                 )
             }
