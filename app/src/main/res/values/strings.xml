@@ -58,8 +58,8 @@
     <string name="settings_profile_add_confirm">创建</string>
     <string name="settings_profile_add_cancel">取消</string>
     <string name="cd_back">返回</string>
-    <string name="scheme_label">访问协议</string>
-    <string name="host_label">地址（IP 或主机名）</string>
+    <string name="scheme_label">协议</string>
+    <string name="host_label">域名/IP</string>
     <string name="port_label">端口</string>
     <string name="chat_api_root_preview">对话 API 根地址：%1$s</string>
     <string name="chat_api_root_preview_invalid">对话 API 根地址：请先填写有效地址与端口（1–65535）</string>
