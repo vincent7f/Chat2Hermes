@@ -35,6 +35,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -262,18 +263,16 @@ fun MainScreen(
                                 contentDescription = stringResource(R.string.cd_open_settings),
                             )
                         }
-                        TextButton(
+                        IconButton(
                             onClick = { viewModel.clearChat() },
                             enabled = chatMessages.isNotEmpty(),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
                             modifier = Modifier.semantics {
                                 contentDescription = cdChatNew
                             },
                         ) {
-                            Text(
-                                text = stringResource(R.string.chat_new_chat),
-                                style = MaterialTheme.typography.labelMedium,
-                                maxLines = 1,
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = null,
                             )
                         }
                     }
@@ -703,6 +702,15 @@ private fun MessageBubbleWithMenu(
             expanded = menuExpanded,
             onDismissRequest = { onMenuExpandedChange(false) },
         ) {
+            if (shouldFold) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.chat_menu_toggle_fold)) },
+                    onClick = {
+                        onMenuExpandedChange(false)
+                        replyExpanded = !replyExpanded
+                    },
+                )
+            }
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.chat_menu_read_aloud)) },
                 onClick = {

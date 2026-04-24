@@ -33,6 +33,7 @@
     <string name="chat_menu_resend">重发</string>
     <string name="chat_menu_copy">复制</string>
     <string name="chat_menu_expand_talk">展开说说</string>
+    <string name="chat_menu_toggle_fold">折叠/展开</string>
     <string name="chat_menu_select">选择</string>
     <string name="chat_select_dialog_title">消息内容</string>
     <string name="chat_select_dialog_close">关闭</string>
